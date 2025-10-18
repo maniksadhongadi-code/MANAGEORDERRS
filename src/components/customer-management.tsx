@@ -83,24 +83,36 @@ export function CustomerManagement() {
     if (!customersCollection) return;
     
     const purchaseDate = new Date();
-    let expirationDate, planInfo = newCustomerData.planInfo;
 
-    if(newCustomerData.status === 'active' && newCustomerData.planDuration) {
+    let newCustomer: Omit<Customer, 'id'>;
+
+    if (newCustomerData.status === 'active' && newCustomerData.planDuration) {
       const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
-      expirationDate = add(purchaseDate, duration);
+      const expirationDate = add(purchaseDate, duration);
+      newCustomer = {
+        email: newCustomerData.email,
+        phone: newCustomerData.phone,
+        status: 'active',
+        planDuration: newCustomerData.planDuration,
+        avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
+        switchClicks: 0,
+        purchaseDate: purchaseDate.toISOString(),
+        expirationDate: expirationDate.toISOString(),
+        isArchived: false,
+        planInfo: '', // For active customers, planInfo is calculated dynamically
+      };
+    } else {
+      newCustomer = {
+        email: newCustomerData.email,
+        phone: newCustomerData.phone,
+        status: 'pending',
+        planInfo: newCustomerData.planInfo,
+        avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
+        switchClicks: 0,
+        purchaseDate: purchaseDate.toISOString(),
+        isArchived: false,
+      };
     }
-
-    const newCustomer: Omit<Customer, 'id'> = {
-      ...newCustomerData,
-      email: newCustomerData.email,
-      phone: newCustomerData.phone,
-      avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
-      switchClicks: 0,
-      purchaseDate: purchaseDate.toISOString(),
-      expirationDate: expirationDate?.toISOString(),
-      planInfo,
-      isArchived: false,
-    };
 
     addDocumentNonBlocking(customersCollection, newCustomer);
 
