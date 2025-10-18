@@ -33,7 +33,7 @@ export function CustomerManagement() {
   const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<CustomerStatus | "archived">("active");
+  const [filterStatus, setFilterStatus] = useState<CustomerStatus | "archived" | "follow-up">("active");
   const [isClient, setIsClient] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<CustomerStatus>('active');
@@ -87,7 +87,10 @@ export function CustomerManagement() {
 
     if (filterStatus === 'archived') {
       filtered = filtered.filter(c => c.isArchived);
-    } else {
+    } else if (filterStatus === 'follow-up') {
+      filtered = filtered.filter(c => !c.isArchived && c.notes && c.notes.trim() !== '');
+    }
+    else {
       filtered = filtered.filter(c => !c.isArchived && c.status === filterStatus);
     }
     
@@ -368,9 +371,10 @@ export function CustomerManagement() {
                     <DropdownMenuContent className="w-56">
                       <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as CustomerStatus | "archived")}>
+                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as CustomerStatus | "archived" | "follow-up")}>
                         <DropdownMenuRadioItem value="active">Active Customer</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="pending">Pending Customer</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="follow-up">Follow Up</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="archived">Archive Customer</DropdownMenuRadioItem>
                       </DropdownMenuRadioGroup>
                     </DropdownMenuContent>

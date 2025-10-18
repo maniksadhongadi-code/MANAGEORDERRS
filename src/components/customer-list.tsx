@@ -26,7 +26,7 @@ interface CustomerListProps {
   onEditReasonClick?: (customer: Customer) => void;
   onDeleteClick?: (customerId: string) => void;
   onNotesClick: (customer: Customer) => void;
-  currentView: CustomerStatus | "archived";
+  currentView: CustomerStatus | "archived" | "follow-up";
 }
 
 export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, onDeleteClick, onNotesClick, currentView }: CustomerListProps) {
