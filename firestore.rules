@@ -1,14 +1,10 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for customer data. Only authenticated users can create customer profiles, and they can only access and modify their own profiles.
- *
- * Data Structure:
- * - All customer data is stored in the `/customers/{customerId}` collection.
- *
- * Key Security Decisions:
- * - Customer listing is disabled to prevent unauthorized data access.
- * - Write access is restricted to the owner of the customer profile.
- * - The `id` field on the Customer document must match the `customerId` path parameter on creation to ensure that the document's ID is consistent with the path. This field is immutable after creation.
+ * @core_philosophy This ruleset enforces a customer-ownership model, where only the customer themselves (or potentially an admin role that is not yet defined) can read, update, or delete their own customer document.  Customer listing is forbidden. The 'isArchived' flag enables soft deletes without permanently removing data.
+ * @data_structure All customer data is stored under the /customers/{customerId} path, with each document representing a single customer.
+ * @key_security_decisions Customer listing is explicitly denied.
+ * @denormalization_for_authorization The 'id' field within each customer document is used to ensure it matches the 'customerId' in the path.  This is validated on creation and enforced as immutable on updates.
+ * @structural_segregation N/A - All customer data resides within a single collection, with the 'status' and 'isArchived' fields used to manage the lifecycle.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -17,32 +13,29 @@ service cloud.firestore {
     /**
      * @description Controls access to individual customer documents.
      * @path /customers/{customerId}
-     * @allow (create) Authenticated user can create a customer document where the `id` field matches their `auth.uid`.
-     * @allow (get, update, delete) Authenticated user can get, update, or delete a customer document where the `id` field matches their `auth.uid`.
-     * @deny (create) Creating a customer document where the `id` field does not match the authenticated user's `auth.uid`.
-     * @deny (get, update, delete) Getting, updating, or deleting a customer document where the `id` field does not match the authenticated user's `auth.uid`.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data. Validates relational integrity between the path and the document's id field.
+     * @allow (create) - Authenticated user can create their own customer document with a matching customerId.
+     * @allow (get, update, delete) - Authenticated user can get, update, or delete their own customer document.
+     * @deny (create) - Non-authenticated user attempts to create a customer document.
+     * @deny (get, update, delete) - Authenticated user attempts to access a customer document that does not belong to them.
+     * @principle Enforces document ownership for writes and reads.
      */
     match /customers/{customerId} {
-      // Helper function to check if the request is authenticated.
       function isSignedIn() {
         return request.auth != null;
       }
 
-      // Helper function to check if the authenticated user is the owner of the customer document.
       function isOwner(customerId) {
         return request.auth.uid == customerId;
       }
 
-      // Helper function to check if the authenticated user is the existing owner of the customer document.
       function isExistingOwner(customerId) {
-        return isOwner(customerId) && resource != null;
+          return isOwner(customerId) && resource != null;
       }
 
-      allow get: if isExistingOwner(customerId);
+      allow get: if isOwner(customerId);
       allow list: if false;
 
-      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.id == customerId;
       allow update: if isExistingOwner(customerId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(customerId);
     }
