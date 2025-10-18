@@ -9,7 +9,7 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Logo className="h-6 w-6 text-primary" />
             <h1 className="font-headline text-2xl font-bold text-primary">
-              CustomerLifeline
+              Sanatan Shop
             </h1>
           </div>
         </div>
@@ -19,7 +19,7 @@ export default function Home() {
       </main>
       <footer className="border-t py-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} CustomerLifeline. All rights reserved.
+            © {new Date().getFullYear()} Sanatan Shop. All rights reserved.
         </div>
       </footer>
     </div>

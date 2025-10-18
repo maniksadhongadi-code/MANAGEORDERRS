@@ -111,28 +111,26 @@ export function CustomerManagement() {
 
   const handleAddCustomer = useCallback((newCustomerData: { email: string; phone: string; planDuration: '1 year' | '3 years', status: CustomerStatus }) => {
     if (!customersCollection) return;
-    
+
     const purchaseDate = new Date();
     const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
     const expirationDate = add(purchaseDate, duration);
     
-    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo'> = {
-        email: newCustomerData.email,
-        phone: newCustomerData.phone,
-        status: newCustomerData.status,
-        planDuration: newCustomerData.planDuration,
-        purchaseDate: purchaseDate.toISOString(),
-        expirationDate: expirationDate.toISOString(),
+    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo' | 'reasonForArchival' | 'restoreClicks'> = {
+      email: newCustomerData.email,
+      phone: newCustomerData.phone,
+      status: newCustomerData.status,
+      planDuration: newCustomerData.planDuration,
+      purchaseDate: purchaseDate.toISOString(),
+      expirationDate: expirationDate.toISOString(),
     };
     
     const completeCustomer: Omit<Customer, 'id'> = {
         ...(newCustomer as any),
-        planInfo: '', // planInfo is now calculated
         avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
         switchClicks: 0,
         isArchived: false,
     };
-
 
     addDocumentNonBlocking(customersCollection, completeCustomer);
 
@@ -164,13 +162,11 @@ export function CustomerManagement() {
             planDuration: '1 year',
             purchaseDate: purchaseDate.toISOString(),
             expirationDate: expirationDate.toISOString(),
-            planInfo: "", // Reset planInfo
           };
       } else {
           updateData = {
             status: newStatus,
             switchClicks: 0,
-            planInfo: "Switched from active",
             planDuration: deleteField() as any,
             expirationDate: deleteField() as any,
           };
@@ -322,9 +318,9 @@ export function CustomerManagement() {
                       <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as CustomerStatus | "archived")}>
-                        <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="archived">Archived</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="active">Active Customer</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="pending">Pending Customer</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="archived">Archive Customer</DropdownMenuRadioItem>
                       </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
