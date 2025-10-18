@@ -45,6 +45,9 @@ export function CustomerManagement() {
   const [customerToEditReason, setCustomerToEditReason] = useState<Customer | null>(null);
   const [editingReason, setEditingReason] = useState("");
 
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [customerForNotes, setCustomerForNotes] = useState<Customer | null>(null);
+  const [editingNotes, setEditingNotes] = useState("");
 
   const { toast } = useToast();
 
@@ -116,7 +119,7 @@ export function CustomerManagement() {
     const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
     const expirationDate = add(purchaseDate, duration);
     
-    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo' | 'reasonForArchival' | 'restoreClicks' | 'deleteClicks'> = {
+    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo' | 'reasonForArchival' | 'restoreClicks' | 'deleteClicks' | 'notes'> = {
       email: newCustomerData.email,
       phone: newCustomerData.phone,
       status: newCustomerData.status,
@@ -155,11 +158,11 @@ export function CustomerManagement() {
 
       if (newStatus === 'active') {
           const purchaseDate = new Date();
-          const expirationDate = add(purchaseDate, { years: 1 });
+          const duration = customer.planDuration === '1 year' ? { years: 1 } : { years: 3 };
+          const expirationDate = add(purchaseDate, duration);
           updateData = {
             status: newStatus,
             switchClicks: 0,
-            planDuration: '1 year',
             purchaseDate: purchaseDate.toISOString(),
             expirationDate: expirationDate.toISOString(),
           };
@@ -167,7 +170,7 @@ export function CustomerManagement() {
           updateData = {
             status: newStatus,
             switchClicks: 0,
-            planDuration: deleteField() as any,
+            purchaseDate: deleteField() as any,
             expirationDate: deleteField() as any,
           };
       }
@@ -301,6 +304,27 @@ export function CustomerManagement() {
     setDialogOpen(true);
   };
 
+  const handleNotesClick = (customer: Customer) => {
+    setCustomerForNotes(customer);
+    setEditingNotes(customer.notes || "");
+    setNotesDialogOpen(true);
+  };
+
+  const handleSaveNotes = () => {
+    if (!firestore || !customerForNotes) return;
+
+    const customerRef = doc(firestore, 'customers', customerForNotes.id);
+    updateDocumentNonBlocking(customerRef, { notes: editingNotes });
+
+    setNotesDialogOpen(false);
+    setCustomerForNotes(null);
+    setEditingNotes("");
+    toast({
+      title: "Notes Updated",
+      description: `Notes for ${customerForNotes.email} have been updated.`,
+    });
+  };
+
   if (!isClient || isLoading) {
     // You can return a loading spinner here
     return (
@@ -360,6 +384,7 @@ export function CustomerManagement() {
               onRestoreClick={handleRestoreClick}
               onEditReasonClick={handleEditReasonClick}
               onDeleteClick={handleDeleteClick}
+              onNotesClick={handleNotesClick}
               currentView={filterStatus}
             />
         </div>
@@ -418,6 +443,29 @@ export function CustomerManagement() {
               <Button onClick={handleSaveReason}>Save Changes</Button>
             </DialogFooter>
           </DialogContent>
+      </Dialog>
+       <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Customer Notes</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid w-full gap-1.5">
+              <Label htmlFor="customer-notes">Notes for {customerForNotes?.email}</Label>
+              <Textarea
+                id="customer-notes"
+                value={editingNotes}
+                onChange={(e) => setEditingNotes(e.target.value)}
+                placeholder="Enter notes for this customer"
+                rows={5}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNotesDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveNotes}>Save Notes</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );

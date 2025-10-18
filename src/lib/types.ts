@@ -15,4 +15,5 @@ export type Customer = {
   expirationDate: string; 
   isArchived: boolean;
   reasonForArchival?: string;
+  notes?: string;
 };

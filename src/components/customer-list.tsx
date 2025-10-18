@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat, Trash2, Undo, Pencil, Delete } from "lucide-react";
+import { Repeat, Trash2, Undo, Pencil, Delete, FileText } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
@@ -25,10 +25,11 @@ interface CustomerListProps {
   onRestoreClick?: (customerId: string) => void;
   onEditReasonClick?: (customer: Customer) => void;
   onDeleteClick?: (customerId: string) => void;
+  onNotesClick: (customer: Customer) => void;
   currentView: CustomerStatus | "archived";
 }
 
-export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, onDeleteClick, currentView }: CustomerListProps) {
+export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, onDeleteClick, onNotesClick, currentView }: CustomerListProps) {
   if (customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
@@ -50,7 +51,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>{isArchivedView ? 'Reason for Archival' : 'Details'}</TableHead>
-              <TableHead>Phone Number</TableHead>
+              <TableHead>Follow Up</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -93,20 +94,28 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <span>{customer.phone}</span>
-                    {currentView === 'pending' && customer.phone && (
-                       <Tooltip>
-                        <TooltipTrigger asChild>
-                           <a href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <WhatsAppIcon className="h-5 w-5 text-green-500" />
-                              </Button>
-                            </a>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Chat on WhatsApp</p>
-                        </TooltipContent>
-                       </Tooltip>
-                    )}
+                     <Tooltip>
+                      <TooltipTrigger asChild>
+                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => onNotesClick(customer)}>
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>View/Edit Notes</p>
+                      </TooltipContent>
+                     </Tooltip>
+                     <Tooltip>
+                      <TooltipTrigger asChild>
+                         <a href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <WhatsAppIcon className="h-5 w-5 text-green-500" />
+                            </Button>
+                          </a>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Chat on WhatsApp</p>
+                      </TooltipContent>
+                     </Tooltip>
                   </div>
                   </TableCell>
                 <TableCell className="text-right">
