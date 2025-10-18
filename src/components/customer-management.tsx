@@ -33,7 +33,7 @@ export function CustomerManagement() {
   const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | CustomerStatus | "archived">("all");
+  const [filterStatus, setFilterStatus] = useState<CustomerStatus | "archived">("active");
   const [isClient, setIsClient] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<CustomerStatus>('active');
@@ -75,10 +75,8 @@ export function CustomerManagement() {
 
     if (filterStatus === 'archived') {
       filtered = filtered.filter(c => c.isArchived);
-    } else if (filterStatus !== 'all') {
-      filtered = filtered.filter(c => !c.isArchived && c.status === filterStatus);
     } else {
-      filtered = filtered.filter(c => !c.isArchived);
+      filtered = filtered.filter(c => !c.isArchived && c.status === filterStatus);
     }
     
     if (searchQuery) {
@@ -326,8 +324,7 @@ export function CustomerManagement() {
                     <DropdownMenuContent className="w-56">
                       <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as "all" | CustomerStatus | "archived")}>
-                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as CustomerStatus | "archived")}>
                         <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="archived">Archived</DropdownMenuRadioItem>
