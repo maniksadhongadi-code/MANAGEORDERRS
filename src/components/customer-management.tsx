@@ -111,14 +111,13 @@ export function CustomerManagement() {
       if (customerIndex === -1) return prevCustomers;
       
       const customer = { ...newCustomers[customerIndex] };
+      const originalStatus = customer.status;
       customer.switchClicks += 1;
 
       if (customer.switchClicks >= 4) {
-        const oldStatus = customer.status;
         customer.status = customer.status === 'active' ? 'pending' : 'active';
         customer.switchClicks = 0;
         
-        // When switching, reset plan info
         if (customer.status === 'active') {
             customer.planDuration = '1 year';
             customer.purchaseDate = new Date().toISOString();
@@ -132,16 +131,21 @@ export function CustomerManagement() {
             delete customer.expirationDate;
         }
 
-        toast({
-          title: "Status Switched!",
-          description: `${customer.email} moved from ${oldStatus} to ${customer.status}.`,
-        });
+        setTimeout(() => {
+          toast({
+            title: "Status Switched!",
+            description: `${customer.email} moved from ${originalStatus} to ${customer.status}.`,
+          });
+        }, 0);
+
       } else {
-        toast({
-          title: `Switching status for ${customer.email}...`,
-          description: `Click ${4 - customer.switchClicks} more times to confirm.`,
-          duration: 2000,
-        });
+        setTimeout(() => {
+          toast({
+            title: `Switching status for ${customer.email}...`,
+            description: `Click ${4 - customer.switchClicks} more times to confirm.`,
+            duration: 2000,
+          });
+        }, 0);
       }
 
       newCustomers[customerIndex] = customer;
