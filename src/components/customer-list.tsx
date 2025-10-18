@@ -14,7 +14,7 @@ import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, differenceInHours } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { WhatsAppIcon } from "./icons/whatsapp-icon";
 
@@ -38,6 +38,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
   }
 
   const isArchivedView = currentView === 'archived';
+  const now = new Date();
 
   return (
     <TooltipProvider>
@@ -54,8 +55,9 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
           </TableHeader>
           <TableBody>
             {customers.map((customer) => {
-              const isExpiringSoon = customer.status === 'active' && customer.expirationDate && differenceInDays(new Date(customer.expirationDate), new Date()) < 30;
-              
+              const isExpiringSoon = customer.status === 'active' && customer.expirationDate && differenceInDays(new Date(customer.expirationDate), now) < 30;
+              const hoursPending = customer.status === 'pending' && customer.purchaseDate ? differenceInHours(now, new Date(customer.purchaseDate)) : 0;
+
               return (
               <TableRow key={customer.id} className={cn(isExpiringSoon && "bg-destructive/10")}>
                 <TableCell>
@@ -66,7 +68,13 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                        </AvatarImage>
                        <AvatarFallback>{customer.email.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="font-medium">{customer.email}</div>
+                    <div className={cn(
+                      "font-medium",
+                      hoursPending > 24 && "text-destructive",
+                      hoursPending > 12 && hoursPending <= 24 && "text-blue-600"
+                    )}>
+                      {customer.email}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell>
