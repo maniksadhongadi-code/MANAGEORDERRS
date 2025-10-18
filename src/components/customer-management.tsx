@@ -90,10 +90,10 @@ export function CustomerManagement() {
     if (filterStatus === 'archived') {
       filtered = filtered.filter(c => c.isArchived);
     } else if (filterStatus === 'follow-up') {
-      filtered = filtered.filter(c => !c.isArchived && c.notes && c.notes.trim() !== '');
+      filtered = filtered.filter(c => !c.isArchived && c.followUpDate);
     }
     else {
-      filtered = filtered.filter(c => !c.isArchived && c.status === filterStatus);
+      filtered = filtered.filter(c => !c.isArchived && c.status === filterStatus && !c.followUpDate);
     }
     
     if (searchQuery) {
