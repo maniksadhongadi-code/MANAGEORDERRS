@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat, Trash2, Undo, Pencil } from "lucide-react";
+import { Repeat, Trash2, Undo, Pencil, Delete } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
@@ -24,10 +24,11 @@ interface CustomerListProps {
   onArchiveClick?: (customerId: string) => void;
   onRestoreClick?: (customerId: string) => void;
   onEditReasonClick?: (customer: Customer) => void;
+  onDeleteClick?: (customerId: string) => void;
   currentView: CustomerStatus | "archived";
 }
 
-export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, currentView }: CustomerListProps) {
+export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, onDeleteClick, currentView }: CustomerListProps) {
   if (customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
@@ -110,7 +111,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                   </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    {isArchivedView && onRestoreClick && onEditReasonClick && (
+                    {isArchivedView && onRestoreClick && onEditReasonClick && onDeleteClick && (
                        <>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -148,6 +149,28 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                           <TooltipContent>
                             <p>Edit Archive Reason</p>
                           </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onDeleteClick(customer.id)}
+                                aria-label={`Permanently delete customer ${customer.email}`}
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                                {customer.deleteClicks && customer.deleteClicks > 0 ? (
+                                  <Badge variant="destructive" className="ml-2 tabular-nums">
+                                    {customer.deleteClicks}/5
+                                  </Badge>
+                                ) : null}
+                              </Button>
+                          </TooltipTrigger>
+                           <TooltipContent>
+                              <p>Click 5 times to permanently delete.</p>
+                           </TooltipContent>
                         </Tooltip>
                        </>
                     )}

@@ -9,12 +9,12 @@ import type { Customer, CustomerStatus } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Menu, Pencil } from "lucide-react";
+import { PlusCircle, Menu } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, deleteField } from "firebase/firestore";
-import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,7 +116,7 @@ export function CustomerManagement() {
     const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
     const expirationDate = add(purchaseDate, duration);
     
-    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo' | 'reasonForArchival' | 'restoreClicks'> = {
+    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo' | 'reasonForArchival' | 'restoreClicks' | 'deleteClicks'> = {
       email: newCustomerData.email,
       phone: newCustomerData.phone,
       status: newCustomerData.status,
@@ -228,11 +228,12 @@ export function CustomerManagement() {
     const newRestoreClicks = (customer.restoreClicks || 0) + 1;
     
     if (newRestoreClicks >= 3) {
-      updateDocumentNonBlocking(customerRef, { 
+      const updateData = { 
         isArchived: false, 
-        reasonForArchival: deleteField() as any,
-        restoreClicks: deleteField() as any,
-      });
+        reasonForArchival: deleteField(),
+        restoreClicks: deleteField(),
+      };
+      updateDocumentNonBlocking(customerRef, updateData);
 
       toast({
         title: "Customer Restored",
@@ -268,6 +269,32 @@ export function CustomerManagement() {
       description: `The reason for archiving ${customerToEditReason.email} has been updated.`,
     });
   };
+
+  const handleDeleteClick = useCallback((customerId: string) => {
+    if (!firestore) return;
+    const customer = customers?.find(c => c.id === customerId);
+    if (!customer) return;
+
+    const customerRef = doc(firestore, 'customers', customerId);
+    const newDeleteClicks = (customer.deleteClicks || 0) + 1;
+
+    if (newDeleteClicks >= 5) {
+      deleteDocumentNonBlocking(customerRef);
+      toast({
+        title: "Customer Deleted",
+        description: `${customer.email} has been permanently deleted.`,
+        variant: "destructive",
+      });
+    } else {
+      updateDocumentNonBlocking(customerRef, { deleteClicks: newDeleteClicks });
+      toast({
+        title: `Deleting ${customer.email}...`,
+        description: `Click ${5 - newDeleteClicks} more times to permanently delete.`,
+        duration: 2000,
+        variant: "destructive",
+      });
+    }
+  }, [customers, firestore, toast]);
   
   const openDialog = (mode: CustomerStatus) => {
     setDialogMode(mode);
@@ -332,6 +359,7 @@ export function CustomerManagement() {
               onArchiveClick={handleArchiveClick}
               onRestoreClick={handleRestoreClick}
               onEditReasonClick={handleEditReasonClick}
+              onDeleteClick={handleDeleteClick}
               currentView={filterStatus}
             />
         </div>

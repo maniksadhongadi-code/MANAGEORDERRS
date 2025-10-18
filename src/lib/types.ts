@@ -9,9 +9,10 @@ export type Customer = {
   avatarUrl: string;
   switchClicks: number;
   restoreClicks?: number; // Added for 3-click restore
+  deleteClicks?: number; // Added for 5-click delete
   purchaseDate: string; // ISO 8601 date string
-  planDuration: '1 year' | '3 years'; // Optional, for active customers
-  expirationDate: string; // Optional, calculated for active customers
+  planDuration: '1 year' | '3 years';
+  expirationDate: string; 
   isArchived: boolean;
   reasonForArchival?: string;
 };
