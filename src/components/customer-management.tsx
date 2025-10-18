@@ -12,6 +12,7 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 
 export function CustomerManagement() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -20,6 +21,8 @@ export function CustomerManagement() {
   const [isClient, setIsClient] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<CustomerStatus>('active');
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -92,6 +95,27 @@ export function CustomerManagement() {
       return newCustomers;
     });
   };
+
+  const handleDeleteClick = (customerId: string) => {
+    setCustomerToDelete(customerId);
+    setDeleteConfirmationOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (customerToDelete) {
+      const customer = customers.find(c => c.id === customerToDelete);
+      setCustomers(prev => prev.filter(c => c.id !== customerToDelete));
+      setDeleteConfirmationOpen(false);
+      setCustomerToDelete(null);
+      if (customer) {
+        toast({
+          title: "Customer Deleted",
+          description: `${customer.email} has been removed.`,
+          variant: "destructive",
+        });
+      }
+    }
+  };
   
   const openDialog = (mode: CustomerStatus) => {
     setDialogMode(mode);
@@ -103,56 +127,73 @@ export function CustomerManagement() {
   }
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <Tabs defaultValue="active" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="active">Active Customers</TabsTrigger>
-          <TabsTrigger value="pending">Pending Customers</TabsTrigger>
-        </TabsList>
-        <TabsContent value="active" className="mt-4 space-y-4">
-          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              placeholder="Search active customers..."
-              value={activeSearch}
-              onChange={(e) => setActiveSearch(e.target.value)}
-              className="max-w-sm"
+    <>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Tabs defaultValue="active" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active">Active Customers</TabsTrigger>
+            <TabsTrigger value="pending">Pending Customers</TabsTrigger>
+          </TabsList>
+          <TabsContent value="active" className="mt-4 space-y-4">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <Input
+                placeholder="Search active customers..."
+                value={activeSearch}
+                onChange={(e) => setActiveSearch(e.target.value)}
+                className="max-w-sm"
+              />
+              <Button onClick={() => openDialog('active')}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Active Customer
+              </Button>
+            </div>
+            <CustomerList
+              customers={filteredActiveCustomers}
+              onSwitchClick={handleSwitchClick}
             />
-            <Button onClick={() => openDialog('active')}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Active Customer
-            </Button>
-          </div>
-          <CustomerList
-            customers={filteredActiveCustomers}
-            onSwitchClick={handleSwitchClick}
-          />
-        </TabsContent>
-        <TabsContent value="pending" className="mt-4 space-y-4">
-          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Input
-              placeholder="Search pending customers..."
-              value={pendingSearch}
-              onChange={(e) => setPendingSearch(e.target.value)}
-              className="max-w-sm"
+          </TabsContent>
+          <TabsContent value="pending" className="mt-4 space-y-4">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <Input
+                placeholder="Search pending customers..."
+                value={pendingSearch}
+                onChange={(e) => setPendingSearch(e.target.value)}
+                className="max-w-sm"
+              />
+              <Button onClick={() => openDialog('pending')}>
+                 <PlusCircle className="mr-2 h-4 w-4" /> Add Pending Customer
+              </Button>
+            </div>
+            <CustomerList
+              customers={filteredPendingCustomers}
+              onSwitchClick={handleSwitchClick}
+              onDeleteClick={handleDeleteClick}
             />
-            <Button onClick={() => openDialog('pending')}>
-               <PlusCircle className="mr-2 h-4 w-4" /> Add Pending Customer
-            </Button>
-          </div>
-          <CustomerList
-            customers={filteredPendingCustomers}
-            onSwitchClick={handleSwitchClick}
+          </TabsContent>
+        </Tabs>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add {dialogMode === 'active' ? 'Active' : 'Pending'} Customer</DialogTitle>
+          </DialogHeader>
+          <AddCustomerForm
+            onSubmit={handleAddCustomer}
+            mode={dialogMode}
           />
-        </TabsContent>
-      </Tabs>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Add {dialogMode === 'active' ? 'Active' : 'Pending'} Customer</DialogTitle>
-        </DialogHeader>
-        <AddCustomerForm
-          onSubmit={handleAddCustomer}
-          mode={dialogMode}
-        />
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the customer account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCustomerToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

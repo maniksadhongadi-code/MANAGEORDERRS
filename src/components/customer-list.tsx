@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat } from "lucide-react";
+import { Repeat, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
@@ -18,9 +18,10 @@ import { Card } from "./ui/card";
 interface CustomerListProps {
   customers: Customer[];
   onSwitchClick: (customerId: string) => void;
+  onDeleteClick?: (customerId: string) => void;
 }
 
-export function CustomerList({ customers, onSwitchClick }: CustomerListProps) {
+export function CustomerList({ customers, onSwitchClick, onDeleteClick }: CustomerListProps) {
   if (customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
@@ -29,6 +30,8 @@ export function CustomerList({ customers, onSwitchClick }: CustomerListProps) {
       </div>
     );
   }
+
+  const isPendingList = customers[0]?.status === 'pending';
 
   return (
     <TooltipProvider>
@@ -61,27 +64,47 @@ export function CustomerList({ customers, onSwitchClick }: CustomerListProps) {
                 <TableCell>{customer.planInfo}</TableCell>
                 <TableCell>{customer.phone}</TableCell>
                 <TableCell className="text-right">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onSwitchClick(customer.id)}
-                        aria-label={`Switch status for ${customer.email}`}
-                      >
-                        <Repeat className="mr-2 h-4 w-4" />
-                        Switch
-                        {customer.switchClicks > 0 && (
-                          <Badge variant="secondary" className="ml-2 tabular-nums">
-                            {customer.switchClicks}/4
-                          </Badge>
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Click 4 times to move this customer.</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <div className="flex justify-end gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onSwitchClick(customer.id)}
+                          aria-label={`Switch status for ${customer.email}`}
+                        >
+                          <Repeat className="mr-2 h-4 w-4" />
+                          Switch
+                          {customer.switchClicks > 0 && (
+                            <Badge variant="secondary" className="ml-2 tabular-nums">
+                              {customer.switchClicks}/4
+                            </Badge>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Click 4 times to move this customer.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    {isPendingList && onDeleteClick && (
+                       <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onDeleteClick(customer.id)}
+                            aria-label={`Delete customer ${customer.email}`}
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Delete Customer</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
