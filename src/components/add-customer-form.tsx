@@ -20,7 +20,7 @@ import { useEffect } from "react";
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   phone: z.string().min(7, { message: "Phone number is too short." }),
-  tenure: z.string().min(1, { message: "This field is required." }),
+  planInfo: z.string().min(1, { message: "This field is required." }),
   status: z.enum(['active', 'pending']),
 });
 
@@ -37,7 +37,7 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
     defaultValues: {
       email: "",
       phone: "",
-      tenure: mode === 'active' ? "1 year" : "",
+      planInfo: mode === 'active' ? "1 year" : "",
       status: mode,
     },
   });
@@ -46,7 +46,7 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
     form.reset({
       email: "",
       phone: "",
-      tenure: mode === 'active' ? "1 year" : "",
+      planInfo: mode === 'active' ? "1 year" : "",
       status: mode,
     });
   }, [mode, form]);
@@ -87,14 +87,14 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
         {mode === 'active' ? (
           <FormField
             control={form.control}
-            name="tenure"
+            name="planInfo"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Subscription Tenure</FormLabel>
+                <FormLabel>Subscription Plan</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select tenure" />
+                      <SelectValue placeholder="Select plan" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -109,7 +109,7 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
         ) : (
           <FormField
             control={form.control}
-            name="tenure"
+            name="planInfo"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Purchase Information</FormLabel>

@@ -109,8 +109,8 @@ export function CustomerManagement() {
           <TabsTrigger value="active">Active Customers</TabsTrigger>
           <TabsTrigger value="pending">Pending Customers</TabsTrigger>
         </TabsList>
-        <TabsContent value="active" className="mt-4">
-          <div className="mb-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <TabsContent value="active" className="mt-4 space-y-4">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Input
               placeholder="Search active customers..."
               value={activeSearch}
@@ -126,8 +126,8 @@ export function CustomerManagement() {
             onSwitchClick={handleSwitchClick}
           />
         </TabsContent>
-        <TabsContent value="pending" className="mt-4">
-          <div className="mb-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <TabsContent value="pending" className="mt-4 space-y-4">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <Input
               placeholder="Search pending customers..."
               value={pendingSearch}

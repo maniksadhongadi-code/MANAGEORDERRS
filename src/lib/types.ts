@@ -4,7 +4,7 @@ export type Customer = {
   id: string;
   email: string;
   phone: string;
-  tenure: string;
+  planInfo: string;
   status: CustomerStatus;
   avatarUrl: string;
   switchClicks: number;

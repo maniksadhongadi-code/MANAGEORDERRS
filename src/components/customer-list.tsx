@@ -1,11 +1,19 @@
 import type { Customer } from "@/lib/types";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat, Phone, Clock } from "lucide-react";
+import { Repeat } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
+import { Card } from "./ui/card";
 
 interface CustomerListProps {
   customers: Customer[];
@@ -24,57 +32,62 @@ export function CustomerList({ customers, onSwitchClick }: CustomerListProps) {
 
   return (
     <TooltipProvider>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {customers.map((customer) => (
-          <Card key={customer.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-lg">
-            <CardHeader className="flex-row items-center gap-4 space-y-0 bg-card/50 pb-4">
-              <Avatar className="h-12 w-12 border">
-                <AvatarImage asChild>
-                  <Image src={customer.avatarUrl} alt={customer.email} width={48} height={48} data-ai-hint="person face" />
-                </AvatarImage>
-                <AvatarFallback>{customer.email.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 overflow-hidden">
-                <CardTitle className="truncate text-base font-bold">{customer.email}</CardTitle>
-                <CardDescription className="truncate">{customer.status === 'active' ? 'Active User' : 'Pending User'}</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-grow space-y-3 p-4 pt-2">
-              <div className="flex items-center text-sm text-muted-foreground">
-                <Phone className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span className="truncate">{customer.phone}</span>
-              </div>
-              <div className="flex items-start text-sm text-muted-foreground">
-                <Clock className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0" />
-                <span className="flex-1">{customer.tenure}</span>
-              </div>
-            </CardContent>
-            <CardFooter className="bg-card/50 p-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => onSwitchClick(customer.id)}
-                    aria-label={`Switch status for ${customer.email}`}
-                  >
-                    <Repeat className="mr-2 h-4 w-4" />
-                    Switch Status
-                    {customer.switchClicks > 0 && (
-                       <Badge variant="secondary" className="ml-2 tabular-nums">
-                        {customer.switchClicks}/4
-                      </Badge>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Click 4 times to move this customer.</p>
-                </TooltipContent>
-              </Tooltip>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Customer</TableHead>
+              <TableHead>
+                {customers[0]?.status === 'active' ? 'Plan Expiration' : 'Purchase Info'}
+              </TableHead>
+              <TableHead>Phone Number</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {customers.map((customer) => (
+              <TableRow key={customer.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9 border">
+                       <AvatarImage asChild>
+                         <Image src={customer.avatarUrl} alt={customer.email} width={36} height={36} data-ai-hint="person face" />
+                       </AvatarImage>
+                       <AvatarFallback>{customer.email.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="font-medium">{customer.email}</div>
+                  </div>
+                </TableCell>
+                <TableCell>{customer.planInfo}</TableCell>
+                <TableCell>{customer.phone}</TableCell>
+                <TableCell className="text-right">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onSwitchClick(customer.id)}
+                        aria-label={`Switch status for ${customer.email}`}
+                      >
+                        <Repeat className="mr-2 h-4 w-4" />
+                        Switch
+                        {customer.switchClicks > 0 && (
+                          <Badge variant="secondary" className="ml-2 tabular-nums">
+                            {customer.switchClicks}/4
+                          </Badge>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Click 4 times to move this customer.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Card>
     </TooltipProvider>
   );
 }
