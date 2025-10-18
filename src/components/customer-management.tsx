@@ -14,12 +14,12 @@ import { PlusCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, deleteField } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export function CustomerManagement() {
   const firestore = useFirestore();
-  const customersCollection = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+  const customersCollection = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
   const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
   
   const [activeSearch, setActiveSearch] = useState("");
@@ -80,6 +80,7 @@ export function CustomerManagement() {
   }, [liveCustomers, pendingSearch, isClient]);
 
   const handleAddCustomer = useCallback((newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'switchClicks' | 'purchaseDate' > & { planInfo: string; planDuration?: '1 year' | '3 years' }) => {
+    if (!customersCollection) return;
     
     const purchaseDate = new Date();
     let expirationDate, planInfo = newCustomerData.planInfo;
@@ -106,11 +107,12 @@ export function CustomerManagement() {
     setDialogOpen(false);
     toast({
       title: "Customer Added",
-      description: `${newCustomer.email} has been added as a ${newCustomer.status} customer.`,
+      description: `${newCustomerData.email} has been added as a ${newCustomerData.status} customer.`,
     });
   }, [customersCollection, toast]);
 
   const handleSwitchClick = useCallback((customerId: string) => {
+    if (!firestore) return;
     const customer = customers?.find(c => c.id === customerId);
     if (!customer) return;
 
@@ -137,8 +139,8 @@ export function CustomerManagement() {
           updateData = {
             ...updateData,
             planInfo: "Switched from active",
-            planDuration: undefined,
-            expirationDate: undefined,
+            planDuration: deleteField() as any,
+            expirationDate: deleteField() as any,
           };
       }
       
@@ -164,7 +166,7 @@ export function CustomerManagement() {
   }, []);
 
   const confirmArchive = useCallback(() => {
-    if (customerToArchive) {
+    if (customerToArchive && firestore) {
       const customer = customers?.find(c => c.id === customerToArchive);
       const customerRef = doc(firestore, 'customers', customerToArchive);
       updateDocumentNonBlocking(customerRef, { isArchived: true });
