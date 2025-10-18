@@ -9,7 +9,7 @@ import type { Customer, CustomerStatus } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Filter } from "lucide-react";
+import { PlusCircle, Menu } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -142,23 +142,23 @@ export function CustomerManagement() {
     
     if (newSwitchClicks >= 4) {
       const newStatus = customer.status === 'active' ? 'pending' : 'active';
-      let updateData: Partial<Customer> = {
-        status: newStatus,
-        switchClicks: 0,
-      };
+      let updateData: Partial<Omit<Customer, 'id'>>;
 
       if (newStatus === 'active') {
           const purchaseDate = new Date();
           const expirationDate = add(purchaseDate, { years: 1 });
           updateData = {
-            ...updateData,
+            status: newStatus,
+            switchClicks: 0,
             planDuration: '1 year',
             purchaseDate: purchaseDate.toISOString(),
             expirationDate: expirationDate.toISOString(),
+            planInfo: "", // Reset planInfo
           };
       } else {
           updateData = {
-            ...updateData,
+            status: newStatus,
+            switchClicks: 0,
             planInfo: "Switched from active",
             planDuration: deleteField() as any,
             expirationDate: deleteField() as any,
@@ -231,23 +231,6 @@ export function CustomerManagement() {
               />
               <div className="flex gap-2">
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline">
-                        <Filter className="mr-2 h-4 w-4" />
-                        Filter
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56">
-                      <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as "all" | CustomerStatus)}>
-                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button>
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Customer
@@ -259,6 +242,22 @@ export function CustomerManagement() {
                      <Button variant="ghost" className="w-full justify-start" onClick={() => openDialog('active')}>Add Active Customer</Button>
                      <Button variant="ghost" className="w-full justify-start" onClick={() => openDialog('pending')}>Add Pending Customer</Button>
                   </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon">
+                        <Menu className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56">
+                      <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as "all" | CustomerStatus)}>
+                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
                 </DropdownMenu>
               </div>
             </div>
