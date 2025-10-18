@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,7 @@ export function CustomerManagement() {
     );
   }, [customers, pendingSearch, isClient]);
 
-  const handleAddCustomer = (newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'switchClicks' | 'purchaseDate' > & { planInfo: string; planDuration?: '1 year' | '3 years' }) => {
+  const handleAddCustomer = useCallback((newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'switchClicks' | 'purchaseDate' > & { planInfo: string; planDuration?: '1 year' | '3 years' }) => {
     
     const purchaseDate = new Date();
     let expirationDate, planInfo = newCustomerData.planInfo;
@@ -102,9 +102,9 @@ export function CustomerManagement() {
       title: "Customer Added",
       description: `${newCustomer.email} has been added as a ${newCustomer.status} customer.`,
     });
-  };
+  }, [toast]);
 
-  const handleSwitchClick = (customerId: string) => {
+  const handleSwitchClick = useCallback((customerId: string) => {
     setCustomers(prevCustomers => {
       const newCustomers = [...prevCustomers];
       const customerIndex = newCustomers.findIndex(c => c.id === customerId);
@@ -147,14 +147,14 @@ export function CustomerManagement() {
       newCustomers[customerIndex] = customer;
       return newCustomers;
     });
-  };
+  }, [toast]);
 
-  const handleDeleteClick = (customerId: string) => {
+  const handleDeleteClick = useCallback((customerId: string) => {
     setCustomerToDelete(customerId);
     setDeleteConfirmationOpen(true);
-  };
+  }, []);
 
-  const confirmDelete = () => {
+  const confirmDelete = useCallback(() => {
     if (customerToDelete) {
       const customer = customers.find(c => c.id === customerToDelete);
       setCustomers(prev => prev.filter(c => c.id !== customerToDelete));
@@ -168,7 +168,7 @@ export function CustomerManagement() {
         });
       }
     }
-  };
+  }, [customerToDelete, customers, toast]);
   
   const openDialog = (mode: CustomerStatus) => {
     setDialogMode(mode);
