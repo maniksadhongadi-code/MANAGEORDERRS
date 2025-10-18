@@ -20,8 +20,7 @@ import { useEffect } from "react";
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   phone: z.string().min(7, { message: "Phone number is too short." }),
-  planInfo: z.string(), // Kept for pending, but can be empty for active
-  planDuration: z.enum(['1 year', '3 years']).optional(),
+  planDuration: z.enum(['1 year', '3 years']),
   status: z.enum(['active', 'pending']),
 });
 
@@ -38,8 +37,7 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
     defaultValues: {
       email: "",
       phone: "",
-      planInfo: "",
-      planDuration: mode === 'active' ? '1 year' : undefined,
+      planDuration: '1 year',
       status: mode,
     },
   });
@@ -48,25 +46,14 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
     form.reset({
       email: "",
       phone: "",
-      planInfo: "",
-      planDuration: mode === 'active' ? '1 year' : undefined,
+      planDuration: '1 year',
       status: mode,
     });
   }, [mode, form]);
 
-  function handleSubmit(values: FormValues) {
-    if (mode === 'pending') {
-      if (!values.planInfo) {
-        form.setError("planInfo", { type: "manual", message: "This field is required for pending customers." });
-        return;
-      }
-    }
-    onSubmit(values);
-  }
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="email"
@@ -93,43 +80,27 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
             </FormItem>
           )}
         />
-        {mode === 'active' ? (
-          <FormField
-            control={form.control}
-            name="planDuration"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Subscription Plan</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select plan" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="1 year">1 Year</SelectItem>
-                    <SelectItem value="3 years">3 Years</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <FormField
-            control={form.control}
-            name="planInfo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Purchase Information</FormLabel>
+        <FormField
+          control={form.control}
+          name="planDuration"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Subscription Plan</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <Input placeholder="e.g., Purchased 1 week ago" {...field} />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select plan" />
+                  </SelectTrigger>
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+                <SelectContent>
+                  <SelectItem value="1 year">1 Year</SelectItem>
+                  <SelectItem value="3 years">3 Years</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">Add Customer</Button>
       </form>
     </Form>

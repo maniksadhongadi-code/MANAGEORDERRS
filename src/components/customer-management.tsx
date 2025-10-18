@@ -63,6 +63,15 @@ export function CustomerManagement() {
           planInfo: `${daysRemaining > 0 ? `${daysRemaining} days remaining` : `Expired ${formatDistanceToNow(expirationDate)} ago`}`,
         };
       }
+      if (c.status === 'pending' && c.expirationDate) {
+        const expirationDate = new Date(c.expirationDate);
+        const daysRemaining = differenceInDays(expirationDate, new Date());
+        
+        return {
+          ...c,
+          planInfo: `Expires in ${daysRemaining} days`,
+        };
+      }
       return c;
     }) || [];
   }, [customers]);
@@ -90,7 +99,7 @@ export function CustomerManagement() {
     return filtered.sort((a, b) => {
        if (a.isArchived) return 1;
        if (b.isArchived) return -1;
-      if (a.status === 'active' && b.status === 'active' && a.expirationDate && b.expirationDate) {
+      if (a.expirationDate && b.expirationDate) {
         return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
       }
       if (a.status === 'active' && b.status !== 'active') return -1;
@@ -100,37 +109,25 @@ export function CustomerManagement() {
   }, [processedCustomers, searchQuery, filterStatus, isClient]);
 
 
-  const handleAddCustomer = useCallback((newCustomerData: { email: string; phone: string; planInfo: string; planDuration?: '1 year' | '3 years', status: CustomerStatus }) => {
+  const handleAddCustomer = useCallback((newCustomerData: { email: string; phone: string; planDuration: '1 year' | '3 years', status: CustomerStatus }) => {
     if (!customersCollection) return;
     
     const purchaseDate = new Date();
-
-    let newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl'>;
-
-    if (newCustomerData.status === 'active' && newCustomerData.planDuration) {
-      const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
-      const expirationDate = add(purchaseDate, duration);
-      newCustomer = {
+    const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
+    const expirationDate = add(purchaseDate, duration);
+    
+    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo'> = {
         email: newCustomerData.email,
         phone: newCustomerData.phone,
-        status: 'active',
+        status: newCustomerData.status,
         planDuration: newCustomerData.planDuration,
         purchaseDate: purchaseDate.toISOString(),
         expirationDate: expirationDate.toISOString(),
-        planInfo: '', 
-      };
-    } else {
-      newCustomer = {
-        email: newCustomerData.email,
-        phone: newCustomerData.phone,
-        status: 'pending',
-        planInfo: newCustomerData.planInfo,
-        purchaseDate: purchaseDate.toISOString(),
-      };
-    }
+    };
     
     const completeCustomer: Omit<Customer, 'id'> = {
         ...(newCustomer as any),
+        planInfo: '', // planInfo is now calculated
         avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
         switchClicks: 0,
         isArchived: false,
