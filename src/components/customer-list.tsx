@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat, Trash2, Undo, Pencil, Delete, FileText } from "lucide-react";
+import { Repeat, Trash2, Undo, Pencil, Delete, FileText, Dot } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
-import { differenceInDays, differenceInHours } from 'date-fns';
+import { differenceInDays, differenceInHours, isPast } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { WhatsAppIcon } from "./icons/whatsapp-icon";
 
@@ -40,6 +40,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
   }
 
   const isArchivedView = currentView === 'archived';
+  const isFollowUpView = currentView === 'follow-up';
   const now = new Date();
 
   return (
@@ -50,7 +51,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>{isArchivedView ? 'Reason for Archival' : 'Details'}</TableHead>
+              <TableHead>{isArchivedView ? 'Reason for Archival' : isFollowUpView ? 'Follow-up Date' : 'Details'}</TableHead>
               <TableHead>Follow Up</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -59,9 +60,13 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
             {customers.map((customer) => {
               const isExpiringSoon = customer.status === 'active' && customer.expirationDate && differenceInDays(new Date(customer.expirationDate), now) < 30;
               const hoursPending = customer.status === 'pending' && customer.purchaseDate ? differenceInHours(now, new Date(customer.purchaseDate)) : 0;
+              const isFollowUpDue = isFollowUpView && customer.followUpDate && isPast(new Date(customer.followUpDate));
 
               return (
-              <TableRow key={customer.id} className={cn(isExpiringSoon && "bg-destructive/10")}>
+              <TableRow key={customer.id} className={cn(
+                  isExpiringSoon && "bg-destructive/10",
+                  isFollowUpDue && "bg-destructive/10"
+                )}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9 border">
@@ -80,16 +85,24 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                   </div>
                 </TableCell>
                 <TableCell>
-                  {customer.isArchived ? (
-                    <Badge variant="destructive">Archived</Badge>
-                  ) : (
-                    <Badge variant={customer.status === 'active' ? 'secondary' : 'outline'}>
-                      {customer.status}
-                    </Badge>
+                  {isFollowUpView && customer.followUpDate && (
+                    <div className="flex items-center">
+                      {isFollowUpDue && <Dot className="h-8 w-8 text-destructive" />}
+                       <Badge variant="outline">Follow-up</Badge>
+                    </div>
+                  )}
+                  {!isFollowUpView && (
+                    customer.isArchived ? (
+                      <Badge variant="destructive">Archived</Badge>
+                    ) : (
+                      <Badge variant={customer.status === 'active' ? 'secondary' : 'outline'}>
+                        {customer.status}
+                      </Badge>
+                    )
                   )}
                 </TableCell>
                 <TableCell className={cn(isExpiringSoon && "text-destructive font-semibold")}>
-                  {isArchivedView ? customer.reasonForArchival : customer.planInfo}
+                  {isArchivedView ? customer.reasonForArchival : isFollowUpView ? (customer.followUpDate ? new Date(customer.followUpDate).toLocaleDateString() : 'N/A') : customer.planInfo}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -183,7 +196,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                         </Tooltip>
                        </>
                     )}
-                    {!isArchivedView && (
+                    {!isArchivedView && !isFollowUpView &&(
                       <>
                         <Tooltip>
                           <TooltipTrigger asChild>

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CustomerList } from "./customer-list";
 import { AddCustomerForm } from "./add-customer-form";
+import { AddFollowUpForm } from "./add-follow-up-form";
 import type { Customer, CustomerStatus } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -13,7 +14,7 @@ import { PlusCircle, Menu } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, deleteField } from "firebase/firestore";
+import { collection, doc, deleteField, where, getDocs } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import {
   DropdownMenu,
@@ -36,6 +37,7 @@ export function CustomerManagement() {
   const [filterStatus, setFilterStatus] = useState<CustomerStatus | "archived" | "follow-up">("active");
   const [isClient, setIsClient] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<CustomerStatus>('active');
   const [archiveConfirmationOpen, setArchiveConfirmationOpen] = useState(false);
   const [customerToArchive, setCustomerToArchive] = useState<string | null>(null);
@@ -105,6 +107,13 @@ export function CustomerManagement() {
     return filtered.sort((a, b) => {
        if (a.isArchived) return 1;
        if (b.isArchived) return -1;
+
+      if (filterStatus === 'follow-up') {
+        const aDate = a.followUpDate ? new Date(a.followUpDate).getTime() : Infinity;
+        const bDate = b.followUpDate ? new Date(b.followUpDate).getTime() : Infinity;
+        return aDate - bDate;
+      }
+
       if (a.expirationDate && b.expirationDate) {
         return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
       }
@@ -122,7 +131,7 @@ export function CustomerManagement() {
     const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
     const expirationDate = add(purchaseDate, duration);
     
-    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo' | 'reasonForArchival' | 'restoreClicks' | 'deleteClicks' | 'notes'> = {
+    const newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl' | 'planInfo' | 'reasonForArchival' | 'restoreClicks' | 'deleteClicks' | 'notes' | 'followUpDate'> = {
       email: newCustomerData.email,
       phone: newCustomerData.phone,
       status: newCustomerData.status,
@@ -146,6 +155,40 @@ export function CustomerManagement() {
       description: `${newCustomerData.email} has been added as a ${newCustomerData.status} customer.`,
     });
   }, [customersCollection, toast]);
+
+  const handleAddFollowUp = useCallback(async (data: { email: string; note: string; days: number }) => {
+    if (!firestore || !customersCollection) return;
+
+    const followUpDate = add(new Date(), { days: data.days });
+    
+    const q = where("email", "==", data.email);
+    const querySnapshot = await getDocs(collection(firestore, "customers"));
+    const matchingCustomers = querySnapshot.docs.filter(doc => doc.data().email === data.email);
+
+
+    if (matchingCustomers.length > 0) {
+      const customerDoc = matchingCustomers[0];
+      const customerRef = doc(firestore, 'customers', customerDoc.id);
+      
+      updateDocumentNonBlocking(customerRef, {
+        notes: data.note,
+        followUpDate: followUpDate.toISOString(),
+      });
+      
+      toast({
+        title: "Follow-up Scheduled",
+        description: `Follow-up for ${data.email} scheduled in ${data.days} days.`,
+      });
+
+    } else {
+       toast({
+        title: "Customer Not Found",
+        description: `No customer with email ${data.email} found.`,
+        variant: "destructive",
+      });
+    }
+     setFollowUpDialogOpen(false);
+  }, [firestore, customersCollection, toast]);
 
   const handleSwitchClick = useCallback((customerId: string) => {
     if (!firestore) return;
@@ -303,12 +346,15 @@ export function CustomerManagement() {
   }, [customers, firestore, toast]);
   
   const openDialog = () => {
-    if (filterStatus === 'active') {
-      setDialogMode('active');
-    } else {
+    if (filterStatus === 'follow-up') {
+      setFollowUpDialogOpen(true);
+    } else if (filterStatus === 'archived') {
       setDialogMode('pending');
+      setDialogOpen(true);
+    } else {
+      setDialogMode(filterStatus);
+      setDialogOpen(true);
     }
-    setDialogOpen(true);
   };
 
   const handleNotesClick = (customer: Customer) => {
@@ -333,7 +379,6 @@ export function CustomerManagement() {
   };
 
   if (!isClient || isLoading) {
-    // You can return a loading spinner here
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
@@ -343,49 +388,50 @@ export function CustomerManagement() {
 
   return (
     <>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <div className="w-full space-y-4">
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search customers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="max-w-sm"
-              />
-              <div className="flex gap-2">
-                <Button onClick={openDialog}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Customer
-                </Button>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon">
-                        <Menu className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56">
-                      <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as CustomerStatus | "archived" | "follow-up")}>
-                        <DropdownMenuRadioItem value="active">Active Customer</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="pending">Pending Customer</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="follow-up">Follow Up</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="archived">Archive Customer</DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-            <CustomerList
-              customers={filteredCustomers}
-              onSwitchClick={handleSwitchClick}
-              onArchiveClick={handleArchiveClick}
-              onRestoreClick={handleRestoreClick}
-              onEditReasonClick={handleEditReasonClick}
-              onDeleteClick={handleDeleteClick}
-              onNotesClick={handleNotesClick}
-              currentView={filterStatus}
+      <div className="w-full space-y-4">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <Input
+              placeholder="Search customers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-sm"
             />
-        </div>
+            <div className="flex gap-2">
+              <Button onClick={openDialog}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add {filterStatus === 'follow-up' ? 'Follow-up' : 'Customer'}
+              </Button>
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Menu className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56">
+                    <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as CustomerStatus | "archived" | "follow-up")}>
+                      <DropdownMenuRadioItem value="active">Active Customer</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="pending">Pending Customer</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="follow-up">Follow Up</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="archived">Archive Customer</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          <CustomerList
+            customers={filteredCustomers}
+            onSwitchClick={handleSwitchClick}
+            onArchiveClick={handleArchiveClick}
+            onRestoreClick={handleRestoreClick}
+            onEditReasonClick={handleEditReasonClick}
+            onDeleteClick={handleDeleteClick}
+            onNotesClick={handleNotesClick}
+            currentView={filterStatus}
+          />
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Add {dialogMode === 'active' ? 'Active' : 'Pending'} Customer</DialogTitle>
@@ -396,6 +442,16 @@ export function CustomerManagement() {
           />
         </DialogContent>
       </Dialog>
+      
+      <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add Follow-up</DialogTitle>
+          </DialogHeader>
+          <AddFollowUpForm onSubmit={handleAddFollowUp} />
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={archiveConfirmationOpen} onOpenChange={setArchiveConfirmationOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -442,6 +498,7 @@ export function CustomerManagement() {
             </DialogFooter>
           </DialogContent>
       </Dialog>
+
        <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

@@ -16,4 +16,5 @@ export type Customer = {
   isArchived: boolean;
   reasonForArchival?: string;
   notes?: string;
+  followUpDate?: string; // ISO 8601 date string for follow-up
 };
