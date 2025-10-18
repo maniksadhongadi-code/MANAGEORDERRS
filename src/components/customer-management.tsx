@@ -302,8 +302,12 @@ export function CustomerManagement() {
     }
   }, [customers, firestore, toast]);
   
-  const openDialog = (mode: CustomerStatus) => {
-    setDialogMode(mode);
+  const openDialog = () => {
+    if (filterStatus === 'active') {
+      setDialogMode('active');
+    } else {
+      setDialogMode('pending');
+    }
     setDialogOpen(true);
   };
 
@@ -349,19 +353,9 @@ export function CustomerManagement() {
                 className="max-w-sm"
               />
               <div className="flex gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Customer
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                     <DropdownMenuLabel>Add a new customer</DropdownMenuLabel>
-                     <DropdownMenuSeparator />
-                     <Button variant="ghost" className="w-full justify-start" onClick={() => openDialog('active')}>Add Active Customer</Button>
-                     <Button variant="ghost" className="w-full justify-start" onClick={() => openDialog('pending')}>Add Pending Customer</Button>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button onClick={openDialog}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Customer
+                </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="icon">
