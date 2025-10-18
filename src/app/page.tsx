@@ -1,7 +1,38 @@
+
+"use client";
+
+import { useState, useEffect } from "react";
 import { CustomerManagement } from "@/components/customer-management";
+import { Login } from "@/components/login";
 import { Logo } from "@/components/icons";
 
+const AUTH_KEY = 'sanatani-shop-auth';
+
 export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    const authStatus = localStorage.getItem(AUTH_KEY);
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLoginSuccess = () => {
+    localStorage.setItem(AUTH_KEY, 'true');
+    setIsAuthenticated(true);
+  };
+
+  if (!isClient) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
@@ -15,7 +46,7 @@ export default function Home() {
         </div>
       </header>
       <main className="container mx-auto p-4 md:p-6">
-        <CustomerManagement />
+        {isAuthenticated ? <CustomerManagement /> : <Login onLoginSuccess={handleLoginSuccess} />}
       </main>
       <footer className="border-t py-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
