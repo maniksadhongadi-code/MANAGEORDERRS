@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CustomerList } from "./customer-list";
@@ -10,20 +9,29 @@ import type { Customer, CustomerStatus } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Filter } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, deleteField } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function CustomerManagement() {
   const firestore = useFirestore();
   const customersCollection = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
   const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
   
-  const [activeSearch, setActiveSearch] = useState("");
-  const [pendingSearch, setPendingSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | CustomerStatus>("all");
   const [isClient, setIsClient] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<CustomerStatus>('active');
@@ -52,32 +60,33 @@ export function CustomerManagement() {
   }, [customers]);
 
 
-  const filteredActiveCustomers = useMemo(() => {
+  const filteredCustomers = useMemo(() => {
     if (!isClient) return [];
-    return liveCustomers
-      .filter(
-        (c) =>
-          c.status === "active" &&
-          (c.email.toLowerCase().includes(activeSearch.toLowerCase()) ||
-            (c.phone && c.phone.includes(activeSearch)))
-      )
-      .sort((a, b) => {
-        if (a.expirationDate && b.expirationDate) {
-          return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
-        }
-        return 0;
-      });
-  }, [liveCustomers, activeSearch, isClient]);
+    
+    let filtered = liveCustomers;
 
-  const filteredPendingCustomers = useMemo(() => {
-    if (!isClient) return [];
-    return liveCustomers.filter(
-      (c) =>
-        c.status === "pending" &&
-        (c.email.toLowerCase().includes(pendingSearch.toLowerCase()) ||
-          (c.phone && c.phone.includes(pendingSearch)))
-    );
-  }, [liveCustomers, pendingSearch, isClient]);
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(c => c.status === filterStatus);
+    }
+    
+    if (searchQuery) {
+      filtered = filtered.filter(
+        c =>
+          c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (c.phone && c.phone.includes(searchQuery))
+      );
+    }
+
+    return filtered.sort((a, b) => {
+      if (a.status === 'active' && b.status === 'active' && a.expirationDate && b.expirationDate) {
+        return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
+      }
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      return 0;
+    });
+  }, [liveCustomers, searchQuery, filterStatus, isClient]);
+
 
   const handleAddCustomer = useCallback((newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'switchClicks' | 'purchaseDate' > & { planInfo: string; planDuration?: '1 year' | '3 years' }) => {
     if (!customersCollection) return;
@@ -202,53 +211,63 @@ export function CustomerManagement() {
 
   if (!isClient || isLoading) {
     // You can return a loading spinner here
-    return null;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
     <>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <Tabs defaultValue="active" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="active">Active Customers</TabsTrigger>
-            <TabsTrigger value="pending">Pending Customers</TabsTrigger>
-          </TabsList>
-          <TabsContent value="active" className="mt-4 space-y-4">
+        <div className="w-full space-y-4">
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
               <Input
-                placeholder="Search active customers..."
-                value={activeSearch}
-                onChange={(e) => setActiveSearch(e.target.value)}
+                placeholder="Search customers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="max-w-sm"
               />
-              <Button onClick={() => openDialog('active')}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Active Customer
-              </Button>
+              <div className="flex gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        <Filter className="mr-2 h-4 w-4" />
+                        Filter
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56">
+                      <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as "all" | CustomerStatus)}>
+                        <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add Customer
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                     <DropdownMenuLabel>Add a new customer</DropdownMenuLabel>
+                     <DropdownMenuSeparator />
+                     <Button variant="ghost" className="w-full justify-start" onClick={() => openDialog('active')}>Add Active Customer</Button>
+                     <Button variant="ghost" className="w-full justify-start" onClick={() => openDialog('pending')}>Add Pending Customer</Button>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
             <CustomerList
-              customers={filteredActiveCustomers}
-              onSwitchClick={handleSwitchClick}
-            />
-          </TabsContent>
-          <TabsContent value="pending" className="mt-4 space-y-4">
-            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <Input
-                placeholder="Search pending customers..."
-                value={pendingSearch}
-                onChange={(e) => setPendingSearch(e.target.value)}
-                className="max-w-sm"
-              />
-              <Button onClick={() => openDialog('pending')}>
-                 <PlusCircle className="mr-2 h-4 w-4" /> Add Pending Customer
-              </Button>
-            </div>
-            <CustomerList
-              customers={filteredPendingCustomers}
+              customers={filteredCustomers}
               onSwitchClick={handleSwitchClick}
               onDeleteClick={handleDeleteClick}
             />
-          </TabsContent>
-        </Tabs>
+        </div>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Add {dialogMode === 'active' ? 'Active' : 'Pending'} Customer</DialogTitle>

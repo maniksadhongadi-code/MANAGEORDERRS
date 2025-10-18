@@ -28,12 +28,10 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
         <h3 className="text-lg font-semibold text-muted-foreground">No customers found.</h3>
-        <p className="text-sm text-muted-foreground">Try a different search or add a new customer.</p>
+        <p className="text-sm text-muted-foreground">Try a different search or filter.</p>
       </div>
     );
   }
-
-  const isPendingList = customers.length > 0 && customers[0]?.status === 'pending';
 
   return (
     <TooltipProvider>
@@ -42,16 +40,16 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
-              <TableHead>
-                {isPendingList ? 'Purchase Info' : 'Plan Expiration'}
-              </TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Details</TableHead>
               <TableHead>Phone Number</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {customers.map((customer) => {
-              const isExpiringSoon = customer.expirationDate && differenceInDays(new Date(customer.expirationDate), new Date()) < 30;
+              const isExpiringSoon = customer.status === 'active' && customer.expirationDate && differenceInDays(new Date(customer.expirationDate), new Date()) < 30;
+              
               return (
               <TableRow key={customer.id} className={cn(isExpiringSoon && "bg-destructive/10")}>
                 <TableCell>
@@ -64,6 +62,11 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
                     </Avatar>
                     <div className="font-medium">{customer.email}</div>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={customer.status === 'active' ? 'secondary' : 'outline'}>
+                    {customer.status}
+                  </Badge>
                 </TableCell>
                 <TableCell className={cn(isExpiringSoon && "text-destructive font-semibold")}>{customer.planInfo}</TableCell>
                 <TableCell>{customer.phone}</TableCell>
@@ -90,7 +93,7 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
                         <p>Click 4 times to move this customer.</p>
                       </TooltipContent>
                     </Tooltip>
-                    {isPendingList && onDeleteClick && (
+                    {customer.status === 'pending' && onDeleteClick && (
                        <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
