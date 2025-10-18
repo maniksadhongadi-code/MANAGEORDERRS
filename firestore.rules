@@ -1,70 +1,41 @@
 /**
- * @fileoverview Firestore Security Rules for the CustomerLifeline application.
- *
- * Core Philosophy:
- * This ruleset enforces a flexible data shape, allowing for rapid prototyping, while strictly controlling authorization.  Customer records can be created, read, updated, and "soft-deleted" (archived). Hard deletes are disallowed.
+ * @file Firestore Security Rules
+ * @description This ruleset prioritizes preventing customer hard deletions, using soft deletes via `isArchived`.
  *
  * Data Structure:
- * The primary data is stored in the `/customers/{customerId}` collection. Each document represents a customer and contains fields like email, phone number, subscription tenure, status, and an archived flag.
+ * - /customers/{customerId}: Stores customer data, including status, status history, and archive status.
  *
  * Key Security Decisions:
- *  - No user listing is allowed.
- *  - Schema validation is relaxed to enable rapid iteration, focusing only on authorization-critical fields.
- *  - "Soft deletion" is implemented using an `isArchived` flag instead of physical deletion.
+ * - Customer documents are not meant to be deleted, so a "soft delete" approach with `isArchived` is enforced, but hard deletes are denied.
+ * - No user listing of the customer collection is allowed, as this could expose sensitive data.
+ * - Only authenticated users are authorized to modify customer data.
+ *
+ * Denormalization for Authorization:
+ * - Not applicable in this simple case.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages access to customer documents.
+     * @description Protects the /customers/{customerId} collection.
      * @path /customers/{customerId}
-     * @allow (get) Anyone can read customer data.
-     * @allow (create) Only authenticated users can create customer documents. The 'id' field must match the customerId parameter.
-     * @allow (update) Only authenticated users can update customer documents.
-     * @allow (delete) Deletion is disallowed. Customers can only be archived using the 'isArchived' field.
-     * @deny (create) If the authenticated user's UID does not match the customerId.
-     * @deny (update) If the document does not exist.
-     * @deny (delete) Always.
-     * @principle Enforces strict ownership and prevents actual deletion of customer data.
+     * @allow (create, update) - Authenticated user can create/update a customer.
+     * @deny (delete) - No one can delete a customer document. Only soft deletes via isArchived are allowed
+     * @deny (list) - No one can list the customer document.
+     * @principle Enforces authenticated access for customer operations and prevents deletion.
      */
     match /customers/{customerId} {
-      // Read Permissions
-      allow get: if true;
+      allow get: if isSignedIn();
       allow list: if false;
-
-      // Write Permissions
-      allow create: if isSignedIn() && request.resource.data.id == customerId;
-      allow update: if isSignedIn() && isExistingCustomer(customerId);
-      allow delete: if false; // Disallow hard deletes - use isArchived field instead
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if false;
     }
 
-    // --- Helper Functions ---
-
-    /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
+    // Define helper functions
     function isSignedIn() {
       return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the user is the owner of the customer document.
-     * @param {string} customerId The ID of the customer document.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
-    function isOwner(customerId) {
-      return request.auth.uid == customerId;
-    }
-
-    /**
-     * @description Checks if the customer document exists and the user is the owner.
-     * @param {string} customerId The ID of the customer document.
-     * @return {boolean} True if the document exists and the user is the owner, false otherwise.
-     */
-    function isExistingCustomer(customerId) {
-      return isOwner(customerId) && resource != null;
     }
   }
 }
