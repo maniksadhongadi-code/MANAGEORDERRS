@@ -16,6 +16,7 @@ import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { differenceInDays } from 'date-fns';
 import { cn } from "@/lib/utils";
+import { WhatsAppIcon } from "./icons/whatsapp-icon";
 
 interface CustomerListProps {
   customers: Customer[];
@@ -80,7 +81,25 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                 <TableCell className={cn(isExpiringSoon && "text-destructive font-semibold")}>
                   {isArchivedView ? customer.reasonForArchival : customer.planInfo}
                 </TableCell>
-                <TableCell>{customer.phone}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span>{customer.phone}</span>
+                    {currentView === 'pending' && customer.phone && (
+                       <Tooltip>
+                        <TooltipTrigger asChild>
+                           <a href={`https://wa.me/${customer.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <WhatsAppIcon className="h-5 w-5 text-green-500" />
+                              </Button>
+                            </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Chat on WhatsApp</p>
+                        </TooltipContent>
+                       </Tooltip>
+                    )}
+                  </div>
+                  </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     {isArchivedView && onRestoreClick && onEditReasonClick && (
