@@ -1,41 +1,50 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset prioritizes preventing customer hard deletions, using soft deletes via `isArchived`.
+ * @description This ruleset enforces a strict user-ownership model for customer data. Only authenticated users can create customer profiles, and they can only access and modify their own profiles.
  *
  * Data Structure:
- * - /customers/{customerId}: Stores customer data, including status, status history, and archive status.
+ * - All customer data is stored in the `/customers/{customerId}` collection.
  *
  * Key Security Decisions:
- * - Customer documents are not meant to be deleted, so a "soft delete" approach with `isArchived` is enforced, but hard deletes are denied.
- * - No user listing of the customer collection is allowed, as this could expose sensitive data.
- * - Only authenticated users are authorized to modify customer data.
- *
- * Denormalization for Authorization:
- * - Not applicable in this simple case.
+ * - Customer listing is disabled to prevent unauthorized data access.
+ * - Write access is restricted to the owner of the customer profile.
+ * - The `id` field on the Customer document must match the `customerId` path parameter on creation to ensure that the document's ID is consistent with the path. This field is immutable after creation.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects the /customers/{customerId} collection.
+     * @description Controls access to individual customer documents.
      * @path /customers/{customerId}
-     * @allow (create, update) - Authenticated user can create/update a customer.
-     * @deny (delete) - No one can delete a customer document. Only soft deletes via isArchived are allowed
-     * @deny (list) - No one can list the customer document.
-     * @principle Enforces authenticated access for customer operations and prevents deletion.
+     * @allow (create) Authenticated user can create a customer document where the `id` field matches their `auth.uid`.
+     * @allow (get, update, delete) Authenticated user can get, update, or delete a customer document where the `id` field matches their `auth.uid`.
+     * @deny (create) Creating a customer document where the `id` field does not match the authenticated user's `auth.uid`.
+     * @deny (get, update, delete) Getting, updating, or deleting a customer document where the `id` field does not match the authenticated user's `auth.uid`.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data. Validates relational integrity between the path and the document's id field.
      */
     match /customers/{customerId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if false;
-    }
+      // Helper function to check if the request is authenticated.
+      function isSignedIn() {
+        return request.auth != null;
+      }
 
-    // Define helper functions
-    function isSignedIn() {
-      return request.auth != null;
+      // Helper function to check if the authenticated user is the owner of the customer document.
+      function isOwner(customerId) {
+        return request.auth.uid == customerId;
+      }
+
+      // Helper function to check if the authenticated user is the existing owner of the customer document.
+      function isExistingOwner(customerId) {
+        return isOwner(customerId) && resource != null;
+      }
+
+      allow get: if isExistingOwner(customerId);
+      allow list: if false;
+
+      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
+      allow update: if isExistingOwner(customerId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(customerId);
     }
   }
 }
