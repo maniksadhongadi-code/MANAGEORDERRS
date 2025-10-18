@@ -24,6 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
 
 export function CustomerManagement() {
   const firestore = useFirestore();
@@ -31,12 +33,14 @@ export function CustomerManagement() {
   const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"all" | CustomerStatus>("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | CustomerStatus | "archived">("all");
   const [isClient, setIsClient] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<CustomerStatus>('active');
-  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [archiveConfirmationOpen, setArchiveConfirmationOpen] = useState(false);
   const [customerToArchive, setCustomerToArchive] = useState<string | null>(null);
+  const [archiveReason, setArchiveReason] = useState("");
+
 
   const { toast } = useToast();
 
@@ -44,8 +48,8 @@ export function CustomerManagement() {
     setIsClient(true);
   }, []);
 
-  const liveCustomers = useMemo(() => {
-    return customers?.filter(c => !c.isArchived).map(c => {
+  const processedCustomers = useMemo(() => {
+    return customers?.map(c => {
        if (c.status === 'active' && c.expirationDate) {
         const expirationDate = new Date(c.expirationDate);
         const daysRemaining = differenceInDays(expirationDate, new Date());
@@ -63,10 +67,14 @@ export function CustomerManagement() {
   const filteredCustomers = useMemo(() => {
     if (!isClient) return [];
     
-    let filtered = liveCustomers;
+    let filtered = processedCustomers;
 
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(c => c.status === filterStatus);
+    if (filterStatus === 'archived') {
+      filtered = filtered.filter(c => c.isArchived);
+    } else if (filterStatus !== 'all') {
+      filtered = filtered.filter(c => !c.isArchived && c.status === filterStatus);
+    } else {
+      filtered = filtered.filter(c => !c.isArchived);
     }
     
     if (searchQuery) {
@@ -78,6 +86,8 @@ export function CustomerManagement() {
     }
 
     return filtered.sort((a, b) => {
+       if (a.isArchived) return 1;
+       if (b.isArchived) return -1;
       if (a.status === 'active' && b.status === 'active' && a.expirationDate && b.expirationDate) {
         return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
       }
@@ -85,10 +95,10 @@ export function CustomerManagement() {
       if (a.status !== 'active' && b.status === 'active') return 1;
       return 0;
     });
-  }, [liveCustomers, searchQuery, filterStatus, isClient]);
+  }, [processedCustomers, searchQuery, filterStatus, isClient]);
 
 
-  const handleAddCustomer = useCallback((newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'switchClicks' | 'purchaseDate' > & { planInfo: string; planDuration?: '1 year' | '3 years' }) => {
+  const handleAddCustomer = useCallback((newCustomerData: { email: string; phone: string; planInfo: string; planDuration?: '1 year' | '3 years', status: CustomerStatus }) => {
     if (!customersCollection) return;
     
     const purchaseDate = new Date();
@@ -181,19 +191,21 @@ export function CustomerManagement() {
     }
   }, [customers, firestore, toast]);
 
-  const handleDeleteClick = useCallback((customerId: string) => {
+  const handleArchiveClick = useCallback((customerId: string) => {
     setCustomerToArchive(customerId);
-    setDeleteConfirmationOpen(true);
+    setArchiveReason("");
+    setArchiveConfirmationOpen(true);
   }, []);
 
   const confirmArchive = useCallback(() => {
-    if (customerToArchive && firestore) {
+    if (customerToArchive && firestore && archiveReason) {
       const customer = customers?.find(c => c.id === customerToArchive);
       const customerRef = doc(firestore, 'customers', customerToArchive);
-      updateDocumentNonBlocking(customerRef, { isArchived: true });
+      updateDocumentNonBlocking(customerRef, { isArchived: true, reasonForArchival: archiveReason });
 
-      setDeleteConfirmationOpen(false);
+      setArchiveConfirmationOpen(false);
       setCustomerToArchive(null);
+      setArchiveReason("");
       if (customer) {
         toast({
           title: "Customer Archived",
@@ -201,8 +213,28 @@ export function CustomerManagement() {
           variant: "destructive",
         });
       }
+    } else if (!archiveReason) {
+       toast({
+          title: "Reason Required",
+          description: `Please provide a reason for archiving.`,
+          variant: "destructive",
+        });
     }
-  }, [customerToArchive, customers, firestore, toast]);
+  }, [customerToArchive, customers, firestore, toast, archiveReason]);
+
+  const handleRestoreClick = useCallback((customerId: string) => {
+    if (!firestore) return;
+    const customer = customers?.find(c => c.id === customerId);
+    if (!customer) return;
+
+    const customerRef = doc(firestore, 'customers', customerId);
+    updateDocumentNonBlocking(customerRef, { isArchived: false, reasonForArchival: deleteField() as any });
+
+    toast({
+      title: "Customer Restored",
+      description: `${customer.email} has been restored.`,
+    });
+  }, [customers, firestore, toast]);
   
   const openDialog = (mode: CustomerStatus) => {
     setDialogMode(mode);
@@ -252,10 +284,11 @@ export function CustomerManagement() {
                     <DropdownMenuContent className="w-56">
                       <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as "all" | CustomerStatus)}>
+                      <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as "all" | CustomerStatus | "archived")}>
                         <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="active">Active</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="archived">Archived</DropdownMenuRadioItem>
                       </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -264,7 +297,9 @@ export function CustomerManagement() {
             <CustomerList
               customers={filteredCustomers}
               onSwitchClick={handleSwitchClick}
-              onDeleteClick={handleDeleteClick}
+              onArchiveClick={handleArchiveClick}
+              onRestoreClick={handleRestoreClick}
+              currentView={filterStatus}
             />
         </div>
         <DialogContent className="sm:max-w-[425px]">
@@ -277,13 +312,22 @@ export function CustomerManagement() {
           />
         </DialogContent>
       </Dialog>
-      <AlertDialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+      <AlertDialog open={archiveConfirmationOpen} onOpenChange={setArchiveConfirmationOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure you want to archive this customer?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will archive the customer account.
+              This action will move the customer to the archived list. Please provide a reason for archiving.
             </AlertDialogDescription>
+             <div className="grid w-full gap-1.5 pt-4">
+              <Label htmlFor="archive-reason">Reason for Archiving</Label>
+              <Textarea 
+                id="archive-reason"
+                placeholder="Type your reason here."
+                value={archiveReason}
+                onChange={(e) => setArchiveReason(e.target.value)}
+              />
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setCustomerToArchive(null)}>Cancel</AlertDialogCancel>

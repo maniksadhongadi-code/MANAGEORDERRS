@@ -1,4 +1,4 @@
-import type { Customer } from "@/lib/types";
+import type { Customer, CustomerStatus } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat, Trash2 } from "lucide-react";
+import { Repeat, Trash2, Undo } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
@@ -20,10 +20,12 @@ import { cn } from "@/lib/utils";
 interface CustomerListProps {
   customers: Customer[];
   onSwitchClick: (customerId: string) => void;
-  onDeleteClick?: (customerId: string) => void;
+  onArchiveClick?: (customerId: string) => void;
+  onRestoreClick?: (customerId: string) => void;
+  currentView: "all" | CustomerStatus | "archived";
 }
 
-export function CustomerList({ customers, onSwitchClick, onDeleteClick }: CustomerListProps) {
+export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, currentView }: CustomerListProps) {
   if (customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
@@ -33,6 +35,8 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
     );
   }
 
+  const isArchivedView = currentView === 'archived';
+
   return (
     <TooltipProvider>
       <Card>
@@ -41,7 +45,7 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Details</TableHead>
+              <TableHead>{isArchivedView ? 'Reason for Archival' : 'Details'}</TableHead>
               <TableHead>Phone Number</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -64,52 +68,80 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={customer.status === 'active' ? 'secondary' : 'outline'}>
-                    {customer.status}
-                  </Badge>
+                  {customer.isArchived ? (
+                    <Badge variant="destructive">Archived</Badge>
+                  ) : (
+                    <Badge variant={customer.status === 'active' ? 'secondary' : 'outline'}>
+                      {customer.status}
+                    </Badge>
+                  )}
                 </TableCell>
-                <TableCell className={cn(isExpiringSoon && "text-destructive font-semibold")}>{customer.planInfo}</TableCell>
+                <TableCell className={cn(isExpiringSoon && "text-destructive font-semibold")}>
+                  {isArchivedView ? customer.reasonForArchival : customer.planInfo}
+                </TableCell>
                 <TableCell>{customer.phone}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onSwitchClick(customer.id)}
-                          aria-label={`Switch status for ${customer.email}`}
-                        >
-                          <Repeat className="mr-2 h-4 w-4" />
-                          Switch
-                          {customer.switchClicks > 0 && (
-                            <Badge variant="secondary" className="ml-2 tabular-nums">
-                              {customer.switchClicks}/4
-                            </Badge>
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Click 4 times to move this customer.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    {customer.status === 'pending' && onDeleteClick && (
+                    {isArchivedView && onRestoreClick && (
                        <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="icon"
-                            onClick={() => onDeleteClick(customer.id)}
-                            aria-label={`Delete customer ${customer.email}`}
-                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            size="sm"
+                            onClick={() => onRestoreClick(customer.id)}
+                            aria-label={`Restore customer ${customer.email}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Undo className="mr-2 h-4 w-4" />
+                            Restore
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Archive Customer</p>
+                          <p>Restore Customer</p>
                         </TooltipContent>
                       </Tooltip>
+                    )}
+                    {!isArchivedView && (
+                      <>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onSwitchClick(customer.id)}
+                              aria-label={`Switch status for ${customer.email}`}
+                            >
+                              <Repeat className="mr-2 h-4 w-4" />
+                              Switch
+                              {customer.switchClicks > 0 && (
+                                <Badge variant="secondary" className="ml-2 tabular-nums">
+                                  {customer.switchClicks}/4
+                                </Badge>
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Click 4 times to move this customer.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        {customer.status === 'pending' && onArchiveClick && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => onArchiveClick(customer.id)}
+                                aria-label={`Archive customer ${customer.email}`}
+                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Archive Customer</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </>
                     )}
                   </div>
                 </TableCell>

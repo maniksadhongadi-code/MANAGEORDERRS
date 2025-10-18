@@ -37,6 +37,10 @@
         "isArchived": {
           "type": "boolean",
           "description": "Indicates if the customer is archived (soft deleted)."
+        },
+        "reasonForArchival": {
+          "type": "string",
+          "description": "The reason why the customer was archived."
         }
       },
       "required": [
