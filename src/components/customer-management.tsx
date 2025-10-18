@@ -7,9 +7,9 @@ import { CustomerList } from "./customer-list";
 import { AddCustomerForm } from "./add-customer-form";
 import type { Customer, CustomerStatus } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Menu } from "lucide-react";
+import { PlusCircle, Menu, Pencil } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -40,6 +40,10 @@ export function CustomerManagement() {
   const [archiveConfirmationOpen, setArchiveConfirmationOpen] = useState(false);
   const [customerToArchive, setCustomerToArchive] = useState<string | null>(null);
   const [archiveReason, setArchiveReason] = useState("");
+
+  const [editReasonDialogOpen, setEditReasonDialogOpen] = useState(false);
+  const [customerToEditReason, setCustomerToEditReason] = useState<Customer | null>(null);
+  const [editingReason, setEditingReason] = useState("");
 
 
   const { toast } = useToast();
@@ -103,7 +107,7 @@ export function CustomerManagement() {
     
     const purchaseDate = new Date();
 
-    let newCustomer: Omit<Customer, 'id'>;
+    let newCustomer: Omit<Customer, 'id' | 'switchClicks' | 'isArchived' | 'avatarUrl'>;
 
     if (newCustomerData.status === 'active' && newCustomerData.planDuration) {
       const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
@@ -113,12 +117,9 @@ export function CustomerManagement() {
         phone: newCustomerData.phone,
         status: 'active',
         planDuration: newCustomerData.planDuration,
-        avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
-        switchClicks: 0,
         purchaseDate: purchaseDate.toISOString(),
         expirationDate: expirationDate.toISOString(),
-        isArchived: false,
-        planInfo: '', // For active customers, planInfo is calculated dynamically
+        planInfo: '', 
       };
     } else {
       newCustomer = {
@@ -126,14 +127,19 @@ export function CustomerManagement() {
         phone: newCustomerData.phone,
         status: 'pending',
         planInfo: newCustomerData.planInfo,
-        avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
-        switchClicks: 0,
         purchaseDate: purchaseDate.toISOString(),
-        isArchived: false,
       };
     }
+    
+    const completeCustomer: Omit<Customer, 'id'> = {
+        ...(newCustomer as any),
+        avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
+        switchClicks: 0,
+        isArchived: false,
+    };
 
-    addDocumentNonBlocking(customersCollection, newCustomer);
+
+    addDocumentNonBlocking(customersCollection, completeCustomer);
 
     setDialogOpen(false);
     toast({
@@ -201,7 +207,7 @@ export function CustomerManagement() {
     if (customerToArchive && firestore && archiveReason) {
       const customer = customers?.find(c => c.id === customerToArchive);
       const customerRef = doc(firestore, 'customers', customerToArchive);
-      updateDocumentNonBlocking(customerRef, { isArchived: true, reasonForArchival: archiveReason });
+      updateDocumentNonBlocking(customerRef, { isArchived: true, reasonForArchival: archiveReason, switchClicks: 0 });
 
       setArchiveConfirmationOpen(false);
       setCustomerToArchive(null);
@@ -228,13 +234,49 @@ export function CustomerManagement() {
     if (!customer) return;
 
     const customerRef = doc(firestore, 'customers', customerId);
-    updateDocumentNonBlocking(customerRef, { isArchived: false, reasonForArchival: deleteField() as any });
+    const newRestoreClicks = (customer.restoreClicks || 0) + 1;
+    
+    if (newRestoreClicks >= 3) {
+      updateDocumentNonBlocking(customerRef, { 
+        isArchived: false, 
+        reasonForArchival: deleteField() as any,
+        restoreClicks: deleteField() as any,
+      });
 
-    toast({
-      title: "Customer Restored",
-      description: `${customer.email} has been restored.`,
-    });
+      toast({
+        title: "Customer Restored",
+        description: `${customer.email} has been restored.`,
+      });
+    } else {
+      updateDocumentNonBlocking(customerRef, { restoreClicks: newRestoreClicks });
+      toast({
+        title: `Restoring ${customer.email}...`,
+        description: `Click ${3 - newRestoreClicks} more times to confirm.`,
+        duration: 2000,
+      });
+    }
   }, [customers, firestore, toast]);
+
+  const handleEditReasonClick = (customer: Customer) => {
+    setCustomerToEditReason(customer);
+    setEditingReason(customer.reasonForArchival || "");
+    setEditReasonDialogOpen(true);
+  };
+  
+  const handleSaveReason = () => {
+    if (!firestore || !customerToEditReason) return;
+    
+    const customerRef = doc(firestore, 'customers', customerToEditReason.id);
+    updateDocumentNonBlocking(customerRef, { reasonForArchival: editingReason });
+
+    setEditReasonDialogOpen(false);
+    setCustomerToEditReason(null);
+    setEditingReason("");
+    toast({
+      title: "Reason Updated",
+      description: `The reason for archiving ${customerToEditReason.email} has been updated.`,
+    });
+  };
   
   const openDialog = (mode: CustomerStatus) => {
     setDialogMode(mode);
@@ -299,6 +341,7 @@ export function CustomerManagement() {
               onSwitchClick={handleSwitchClick}
               onArchiveClick={handleArchiveClick}
               onRestoreClick={handleRestoreClick}
+              onEditReasonClick={handleEditReasonClick}
               currentView={filterStatus}
             />
         </div>
@@ -335,6 +378,29 @@ export function CustomerManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <Dialog open={editReasonDialogOpen} onOpenChange={setEditReasonDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Archive Reason</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid w-full gap-1.5">
+                <Label htmlFor="edit-archive-reason">Reason for Archiving</Label>
+                <Textarea
+                  id="edit-archive-reason"
+                  value={editingReason}
+                  onChange={(e) => setEditingReason(e.target.value)}
+                  placeholder="Enter the reason for archiving"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditReasonDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveReason}>Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </>
   );
 }

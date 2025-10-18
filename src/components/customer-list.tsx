@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat, Trash2, Undo } from "lucide-react";
+import { Repeat, Trash2, Undo, Pencil } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
@@ -22,10 +22,11 @@ interface CustomerListProps {
   onSwitchClick: (customerId: string) => void;
   onArchiveClick?: (customerId: string) => void;
   onRestoreClick?: (customerId: string) => void;
+  onEditReasonClick?: (customer: Customer) => void;
   currentView: "all" | CustomerStatus | "archived";
 }
 
-export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, currentView }: CustomerListProps) {
+export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, currentView }: CustomerListProps) {
   if (customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
@@ -82,23 +83,46 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                 <TableCell>{customer.phone}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    {isArchivedView && onRestoreClick && (
-                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRestoreClick(customer.id)}
-                            aria-label={`Restore customer ${customer.email}`}
-                          >
-                            <Undo className="mr-2 h-4 w-4" />
-                            Restore
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Restore Customer</p>
-                        </TooltipContent>
-                      </Tooltip>
+                    {isArchivedView && onRestoreClick && onEditReasonClick && (
+                       <>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onRestoreClick(customer.id)}
+                              aria-label={`Restore customer ${customer.email}`}
+                            >
+                              <Undo className="mr-2 h-4 w-4" />
+                              Restore
+                              {customer.restoreClicks && customer.restoreClicks > 0 ? (
+                                <Badge variant="secondary" className="ml-2 tabular-nums">
+                                  {customer.restoreClicks}/3
+                                </Badge>
+                              ) : null}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Click 3 times to restore this customer.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEditReasonClick(customer)}
+                              aria-label={`Edit reason for ${customer.email}`}
+                              className="text-muted-foreground hover:bg-accent/10 hover:text-accent-foreground"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Edit Archive Reason</p>
+                          </TooltipContent>
+                        </Tooltip>
+                       </>
                     )}
                     {!isArchivedView && (
                       <>
