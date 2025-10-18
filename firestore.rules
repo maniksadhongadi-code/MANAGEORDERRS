@@ -1,0 +1,61 @@
+/**
+ * @fileoverview Firestore Security Rules for the CustomerLifeline application.
+ *
+ * Core Philosophy:
+ * This ruleset allows public read access to customer data. Writes (create, update)
+ * are allowed without authentication. Customer deletion is always denied, as
+ * per the application's core requirement of preventing data loss.
+ *
+ * Data Structure:
+ * Customer data is stored in the `/customers/{customerId}` collection. Each
+ * document represents a customer and includes fields such as `email`,
+ * `phoneNumber`, `subscriptionTenure`, and `status`.
+ *
+ * Key Security Decisions:
+ * - Customer data is publicly readable.
+ * - Customer data can be created or updated without authentication.
+ * - Customer data cannot be deleted.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Allows public read access to customer documents.
+     * @path /customers/{customerId}
+     * @allow (get, list) User is not authenticated, but can read data.
+     * @deny None. Public read access is allowed.
+     * @principle Allows public read access to all customers.
+     */
+    match /customers/{customerId} {
+      allow get, list: if true;
+
+      /**
+       * @description Allows anyone to create a new customer document.
+       * @path /customers/{customerId}
+       * @allow (create) User is not authenticated, but can create data.
+       * @deny None. Public write access is allowed.
+       * @principle Allows creation of customer documents.
+       */
+      allow create: if true;
+
+      /**
+       * @description Allows anyone to update an existing customer document.
+       * @path /customers/{customerId}
+       * @allow (update) User is not authenticated, but can update data.
+       * @deny None. Public write access is allowed.
+       * @principle Allows updating customer documents.
+       */
+      allow update: if true;
+
+      /**
+       * @description Prevents the deletion of customer documents.
+       * @path /customers/{customerId}
+       * @allow None.
+       * @deny (delete) Prevents any deletion of the document.
+       * @principle Enforces the requirement that customer data should never be deleted.
+       */
+      allow delete: if false;
+    }
+  }
+}

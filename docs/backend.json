@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer in the CustomerLifeline application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Customer entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the customer.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number of the customer."
+        },
+        "subscriptionTenure": {
+          "type": "string",
+          "description": "The subscription tenure of the customer (e.g., '1 year', '3 years')."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the customer, either 'active' or 'pending'."
+        },
+        "statusHistory": {
+          "type": "array",
+          "description": "History of status changes for the customer.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "phoneNumber",
+        "subscriptionTenure",
+        "status"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer information. Includes 'status' field to indicate 'active' or 'pending' status, and 'statusHistory' to track status changes.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "Unique identifier for the customer."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The database structure prioritizes preventing customer deletion as a primary requirement. To support the management of active and pending customers and the transition between these states, a single `customers` collection is used.  A `status` field within each customer document indicates whether the customer is 'active' or 'pending', and the `statusHistory` array tracks all state transitions. Since customer data should not be deleted, no deletion rules are added to the design. This design ensures a simple and straightforward approach to managing customer data and transitions while adhering to the no-deletion requirement.\n\nThis structure does not require authentication or authorization as it was not specified in the user request."
+  }
+}
