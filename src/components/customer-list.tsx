@@ -14,6 +14,8 @@ import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
+import { differenceInDays } from 'date-fns';
+import { cn } from "@/lib/utils";
 
 interface CustomerListProps {
   customers: Customer[];
@@ -48,8 +50,10 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
             </TableRow>
           </TableHeader>
           <TableBody>
-            {customers.map((customer) => (
-              <TableRow key={customer.id}>
+            {customers.map((customer) => {
+              const isExpiringSoon = customer.expirationDate && differenceInDays(new Date(customer.expirationDate), new Date()) < 30;
+              return (
+              <TableRow key={customer.id} className={cn(isExpiringSoon && "bg-destructive/10")}>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9 border">
@@ -61,7 +65,7 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
                     <div className="font-medium">{customer.email}</div>
                   </div>
                 </TableCell>
-                <TableCell>{customer.planInfo}</TableCell>
+                <TableCell className={cn(isExpiringSoon && "text-destructive font-semibold")}>{customer.planInfo}</TableCell>
                 <TableCell>{customer.phone}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
@@ -107,7 +111,7 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
           </TableBody>
         </Table>
       </Card>

@@ -20,7 +20,8 @@ import { useEffect } from "react";
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   phone: z.string().min(7, { message: "Phone number is too short." }),
-  planInfo: z.string().min(1, { message: "This field is required." }),
+  planInfo: z.string(), // Kept for pending, but can be empty for active
+  planDuration: z.enum(['1 year', '3 years']).optional(),
   status: z.enum(['active', 'pending']),
 });
 
@@ -37,7 +38,8 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
     defaultValues: {
       email: "",
       phone: "",
-      planInfo: mode === 'active' ? "1 year" : "",
+      planInfo: "",
+      planDuration: mode === 'active' ? '1 year' : undefined,
       status: mode,
     },
   });
@@ -46,12 +48,19 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
     form.reset({
       email: "",
       phone: "",
-      planInfo: mode === 'active' ? "1 year" : "",
+      planInfo: "",
+      planDuration: mode === 'active' ? '1 year' : undefined,
       status: mode,
     });
   }, [mode, form]);
 
   function handleSubmit(values: FormValues) {
+    if (mode === 'pending') {
+      if (!values.planInfo) {
+        form.setError("planInfo", { type: "manual", message: "This field is required for pending customers." });
+        return;
+      }
+    }
     onSubmit(values);
   }
 
@@ -87,7 +96,7 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
         {mode === 'active' ? (
           <FormField
             control={form.control}
-            name="planInfo"
+            name="planDuration"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Subscription Plan</FormLabel>

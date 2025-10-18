@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
+import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
 
 export function CustomerManagement() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -27,18 +28,40 @@ export function CustomerManagement() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setCustomers(initialCustomers);
+    const processedCustomers = initialCustomers.map(c => {
+      if (c.status === 'active' && c.planDuration) {
+        const purchaseDate = new Date(c.purchaseDate);
+        const duration = c.planDuration === '1 year' ? { years: 1 } : { years: 3 };
+        const expirationDate = add(purchaseDate, duration);
+        const daysRemaining = differenceInDays(expirationDate, new Date());
+        
+        return {
+          ...c,
+          expirationDate: expirationDate.toISOString(),
+          planInfo: `${daysRemaining > 0 ? `${daysRemaining} days remaining` : `Expired ${formatDistanceToNow(expirationDate)} ago`}`,
+        };
+      }
+      return c;
+    });
+    setCustomers(processedCustomers);
     setIsClient(true);
   }, []);
 
   const filteredActiveCustomers = useMemo(() => {
     if (!isClient) return [];
-    return customers.filter(
-      (c) =>
-        c.status === "active" &&
-        (c.email.toLowerCase().includes(activeSearch.toLowerCase()) ||
-          c.phone.includes(activeSearch))
-    );
+    return customers
+      .filter(
+        (c) =>
+          c.status === "active" &&
+          (c.email.toLowerCase().includes(activeSearch.toLowerCase()) ||
+            c.phone.includes(activeSearch))
+      )
+      .sort((a, b) => {
+        if (a.expirationDate && b.expirationDate) {
+          return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
+        }
+        return 0;
+      });
   }, [customers, activeSearch, isClient]);
 
   const filteredPendingCustomers = useMemo(() => {
@@ -51,13 +74,28 @@ export function CustomerManagement() {
     );
   }, [customers, pendingSearch, isClient]);
 
-  const handleAddCustomer = (newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'switchClicks'>) => {
+  const handleAddCustomer = (newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'switchClicks' | 'purchaseDate' > & { planInfo: string; planDuration?: '1 year' | '3 years' }) => {
+    
+    const purchaseDate = new Date();
+    let expirationDate, planInfo = newCustomerData.planInfo;
+
+    if(newCustomerData.status === 'active' && newCustomerData.planDuration) {
+      const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
+      expirationDate = add(purchaseDate, duration);
+      const daysRemaining = differenceInDays(expirationDate, new Date());
+      planInfo = `${daysRemaining} days remaining`;
+    }
+
     const newCustomer: Customer = {
       ...newCustomerData,
       id: new Date().getTime().toString(),
       avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
       switchClicks: 0,
+      purchaseDate: purchaseDate.toISOString(),
+      expirationDate: expirationDate?.toISOString(),
+      planInfo,
     };
+
     setCustomers((prev) => [newCustomer, ...prev]);
     setDialogOpen(false);
     toast({
@@ -79,6 +117,21 @@ export function CustomerManagement() {
         const oldStatus = customer.status;
         customer.status = customer.status === 'active' ? 'pending' : 'active';
         customer.switchClicks = 0;
+        
+        // When switching, reset plan info
+        if (customer.status === 'active') {
+            customer.planDuration = '1 year';
+            customer.purchaseDate = new Date().toISOString();
+            const expirationDate = add(new Date(customer.purchaseDate), { years: 1 });
+            const daysRemaining = differenceInDays(expirationDate, new Date());
+            customer.expirationDate = expirationDate.toISOString();
+            customer.planInfo = `${daysRemaining} days remaining`;
+        } else {
+            customer.planInfo = "Switched from active";
+            delete customer.planDuration;
+            delete customer.expirationDate;
+        }
+
         toast({
           title: "Status Switched!",
           description: `${customer.email} moved from ${oldStatus} to ${customer.status}.`,
