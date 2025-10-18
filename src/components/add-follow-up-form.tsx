@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
+  phone: z.string().min(7, { message: "Phone number is too short." }),
   note: z.string().min(1, { message: "Note cannot be empty." }),
   days: z.coerce.number().int().positive({ message: "Days must be a positive number." }),
 });
@@ -31,7 +31,7 @@ export function AddFollowUpForm({ onSubmit }: AddFollowUpFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
+      phone: "",
       note: "",
       days: 7,
     },
@@ -42,12 +42,12 @@ export function AddFollowUpForm({ onSubmit }: AddFollowUpFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="email"
+          name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Customer Email</FormLabel>
+              <FormLabel>Customer Phone Number</FormLabel>
               <FormControl>
-                <Input placeholder="customer@example.com" {...field} />
+                <Input placeholder="555-123-4567" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

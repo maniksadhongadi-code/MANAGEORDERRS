@@ -156,14 +156,14 @@ export function CustomerManagement() {
     });
   }, [customersCollection, toast]);
 
-  const handleAddFollowUp = useCallback(async (data: { email: string; note: string; days: number }) => {
+  const handleAddFollowUp = useCallback(async (data: { phone: string; note: string; days: number }) => {
     if (!firestore || !customersCollection) return;
 
     const followUpDate = add(new Date(), { days: data.days });
     
-    const q = where("email", "==", data.email);
+    const q = where("phone", "==", data.phone);
     const querySnapshot = await getDocs(collection(firestore, "customers"));
-    const matchingCustomers = querySnapshot.docs.filter(doc => doc.data().email === data.email);
+    const matchingCustomers = querySnapshot.docs.filter(doc => doc.data().phone === data.phone);
 
 
     if (matchingCustomers.length > 0) {
@@ -177,13 +177,13 @@ export function CustomerManagement() {
       
       toast({
         title: "Follow-up Scheduled",
-        description: `Follow-up for ${data.email} scheduled in ${data.days} days.`,
+        description: `Follow-up for customer with phone ${data.phone} scheduled in ${data.days} days.`,
       });
 
     } else {
        toast({
         title: "Customer Not Found",
-        description: `No customer with email ${data.email} found.`,
+        description: `No customer with phone number ${data.phone} found.`,
         variant: "destructive",
       });
     }
