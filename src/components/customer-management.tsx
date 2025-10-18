@@ -7,54 +7,59 @@ import { Button } from "@/components/ui/button";
 import { CustomerList } from "./customer-list";
 import { AddCustomerForm } from "./add-customer-form";
 import type { Customer, CustomerStatus } from "@/lib/types";
-import { initialCustomers } from "@/lib/initial-data";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export function CustomerManagement() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const firestore = useFirestore();
+  const customersCollection = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+  const { data: customers, isLoading } = useCollection<Customer>(customersCollection);
+  
   const [activeSearch, setActiveSearch] = useState("");
   const [pendingSearch, setPendingSearch] = useState("");
   const [isClient, setIsClient] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<CustomerStatus>('active');
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
-  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
+  const [customerToArchive, setCustomerToArchive] = useState<string | null>(null);
 
   const { toast } = useToast();
 
   useEffect(() => {
-    const processedCustomers = initialCustomers.map(c => {
-      if (c.status === 'active' && c.planDuration) {
-        const purchaseDate = new Date(c.purchaseDate);
-        const duration = c.planDuration === '1 year' ? { years: 1 } : { years: 3 };
-        const expirationDate = add(purchaseDate, duration);
+    setIsClient(true);
+  }, []);
+
+  const liveCustomers = useMemo(() => {
+    return customers?.filter(c => !c.isArchived).map(c => {
+       if (c.status === 'active' && c.expirationDate) {
+        const expirationDate = new Date(c.expirationDate);
         const daysRemaining = differenceInDays(expirationDate, new Date());
         
         return {
           ...c,
-          expirationDate: expirationDate.toISOString(),
           planInfo: `${daysRemaining > 0 ? `${daysRemaining} days remaining` : `Expired ${formatDistanceToNow(expirationDate)} ago`}`,
         };
       }
       return c;
-    });
-    setCustomers(processedCustomers);
-    setIsClient(true);
-  }, []);
+    }) || [];
+  }, [customers]);
+
 
   const filteredActiveCustomers = useMemo(() => {
     if (!isClient) return [];
-    return customers
+    return liveCustomers
       .filter(
         (c) =>
           c.status === "active" &&
           (c.email.toLowerCase().includes(activeSearch.toLowerCase()) ||
-            c.phone.includes(activeSearch))
+            (c.phone && c.phone.includes(activeSearch)))
       )
       .sort((a, b) => {
         if (a.expirationDate && b.expirationDate) {
@@ -62,17 +67,17 @@ export function CustomerManagement() {
         }
         return 0;
       });
-  }, [customers, activeSearch, isClient]);
+  }, [liveCustomers, activeSearch, isClient]);
 
   const filteredPendingCustomers = useMemo(() => {
     if (!isClient) return [];
-    return customers.filter(
+    return liveCustomers.filter(
       (c) =>
         c.status === "pending" &&
         (c.email.toLowerCase().includes(pendingSearch.toLowerCase()) ||
-          c.phone.includes(pendingSearch))
+          (c.phone && c.phone.includes(pendingSearch)))
     );
-  }, [customers, pendingSearch, isClient]);
+  }, [liveCustomers, pendingSearch, isClient]);
 
   const handleAddCustomer = useCallback((newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'switchClicks' | 'purchaseDate' > & { planInfo: string; planDuration?: '1 year' | '3 years' }) => {
     
@@ -82,104 +87,107 @@ export function CustomerManagement() {
     if(newCustomerData.status === 'active' && newCustomerData.planDuration) {
       const duration = newCustomerData.planDuration === '1 year' ? { years: 1 } : { years: 3 };
       expirationDate = add(purchaseDate, duration);
-      const daysRemaining = differenceInDays(expirationDate, new Date());
-      planInfo = `${daysRemaining} days remaining`;
     }
 
-    const newCustomer: Customer = {
+    const newCustomer: Omit<Customer, 'id'> = {
       ...newCustomerData,
-      id: new Date().getTime().toString(),
+      email: newCustomerData.email,
+      phone: newCustomerData.phone,
       avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
       switchClicks: 0,
       purchaseDate: purchaseDate.toISOString(),
       expirationDate: expirationDate?.toISOString(),
       planInfo,
+      isArchived: false,
     };
 
-    setCustomers((prev) => [newCustomer, ...prev]);
+    addDocumentNonBlocking(customersCollection, newCustomer);
+
     setDialogOpen(false);
     toast({
       title: "Customer Added",
       description: `${newCustomer.email} has been added as a ${newCustomer.status} customer.`,
     });
-  }, [toast]);
+  }, [customersCollection, toast]);
 
   const handleSwitchClick = useCallback((customerId: string) => {
-    setCustomers(prevCustomers => {
-      const newCustomers = [...prevCustomers];
-      const customerIndex = newCustomers.findIndex(c => c.id === customerId);
-      if (customerIndex === -1) return prevCustomers;
-      
-      const customer = { ...newCustomers[customerIndex] };
-      const originalStatus = customer.status;
-      customer.switchClicks += 1;
+    const customer = customers?.find(c => c.id === customerId);
+    if (!customer) return;
 
-      if (customer.switchClicks >= 4) {
-        customer.status = customer.status === 'active' ? 'pending' : 'active';
-        customer.switchClicks = 0;
-        
-        if (customer.status === 'active') {
-            customer.planDuration = '1 year';
-            customer.purchaseDate = new Date().toISOString();
-            const expirationDate = add(new Date(customer.purchaseDate), { years: 1 });
-            const daysRemaining = differenceInDays(expirationDate, new Date());
-            customer.expirationDate = expirationDate.toISOString();
-            customer.planInfo = `${daysRemaining} days remaining`;
-        } else {
-            customer.planInfo = "Switched from active";
-            delete customer.planDuration;
-            delete customer.expirationDate;
-        }
+    const customerRef = doc(firestore, 'customers', customerId);
+    const newSwitchClicks = (customer.switchClicks || 0) + 1;
+    
+    if (newSwitchClicks >= 4) {
+      const newStatus = customer.status === 'active' ? 'pending' : 'active';
+      let updateData: Partial<Customer> = {
+        status: newStatus,
+        switchClicks: 0,
+      };
 
-        setTimeout(() => {
-          toast({
-            title: "Status Switched!",
-            description: `${customer.email} moved from ${originalStatus} to ${customer.status}.`,
-          });
-        }, 0);
-
+      if (newStatus === 'active') {
+          const purchaseDate = new Date();
+          const expirationDate = add(purchaseDate, { years: 1 });
+          updateData = {
+            ...updateData,
+            planDuration: '1 year',
+            purchaseDate: purchaseDate.toISOString(),
+            expirationDate: expirationDate.toISOString(),
+          };
       } else {
-        setTimeout(() => {
-          toast({
-            title: `Switching status for ${customer.email}...`,
-            description: `Click ${4 - customer.switchClicks} more times to confirm.`,
-            duration: 2000,
-          });
-        }, 0);
+          updateData = {
+            ...updateData,
+            planInfo: "Switched from active",
+            planDuration: undefined,
+            expirationDate: undefined,
+          };
       }
+      
+      updateDocumentNonBlocking(customerRef, updateData);
 
-      newCustomers[customerIndex] = customer;
-      return newCustomers;
-    });
-  }, [toast]);
+      toast({
+        title: "Status Switched!",
+        description: `${customer.email} moved from ${customer.status} to ${newStatus}.`,
+      });
+    } else {
+      updateDocumentNonBlocking(customerRef, { switchClicks: newSwitchClicks });
+      toast({
+        title: `Switching status for ${customer.email}...`,
+        description: `Click ${4 - newSwitchClicks} more times to confirm.`,
+        duration: 2000,
+      });
+    }
+  }, [customers, firestore, toast]);
 
   const handleDeleteClick = useCallback((customerId: string) => {
-    setCustomerToDelete(customerId);
+    setCustomerToArchive(customerId);
     setDeleteConfirmationOpen(true);
   }, []);
 
-  const confirmDelete = useCallback(() => {
-    if (customerToDelete) {
-      const customer = customers.find(c => c.id === customerToDelete);
-      setCustomers(prev => prev.filter(c => c.id !== customerToDelete));
+  const confirmArchive = useCallback(() => {
+    if (customerToArchive) {
+      const customer = customers?.find(c => c.id === customerToArchive);
+      const customerRef = doc(firestore, 'customers', customerToArchive);
+      updateDocumentNonBlocking(customerRef, { isArchived: true });
+
       setDeleteConfirmationOpen(false);
-      setCustomerToDelete(null);
+      setCustomerToArchive(null);
       if (customer) {
         toast({
-          title: "Customer Deleted",
-          description: `${customer.email} has been removed.`,
+          title: "Customer Archived",
+          description: `${customer.email} has been archived.`,
           variant: "destructive",
         });
       }
     }
-  }, [customerToDelete, customers, toast]);
+  }, [customerToArchive, customers, firestore, toast]);
   
   const openDialog = (mode: CustomerStatus) => {
     setDialogMode(mode);
     setDialogOpen(true);
   };
 
-  if (!isClient) {
+  if (!isClient || isLoading) {
+    // You can return a loading spinner here
     return null;
   }
 
@@ -242,12 +250,12 @@ export function CustomerManagement() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the customer account.
+              This action cannot be undone. This will archive the customer account.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setCustomerToDelete(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            <AlertDialogCancel onClick={() => setCustomerToArchive(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmArchive} className="bg-destructive hover:bg-destructive/90">Archive</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

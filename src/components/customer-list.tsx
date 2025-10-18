@@ -33,7 +33,7 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
     );
   }
 
-  const isPendingList = customers[0]?.status === 'pending';
+  const isPendingList = customers.length > 0 && customers[0]?.status === 'pending';
 
   return (
     <TooltipProvider>
@@ -43,7 +43,7 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>
-                {customers[0]?.status === 'active' ? 'Plan Expiration' : 'Purchase Info'}
+                {isPendingList ? 'Purchase Info' : 'Plan Expiration'}
               </TableHead>
               <TableHead>Phone Number</TableHead>
               <TableHead className="text-right">Action</TableHead>
@@ -104,7 +104,7 @@ export function CustomerList({ customers, onSwitchClick, onDeleteClick }: Custom
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Delete Customer</p>
+                          <p>Archive Customer</p>
                         </TooltipContent>
                       </Tooltip>
                     )}

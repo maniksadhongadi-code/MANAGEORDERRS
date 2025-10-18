@@ -5,9 +5,8 @@ const getAvatar = (index: number) => PlaceHolderImages[index % PlaceHolderImages
 
 const now = new Date();
 
-export const initialCustomers: Customer[] = [
+export const initialCustomers: Omit<Customer, 'id'>[] = [
   {
-    id: '1',
     email: 'chloe.miller@example.com',
     phone: '555-0101',
     planInfo: '', // Will be calculated
@@ -16,9 +15,9 @@ export const initialCustomers: Customer[] = [
     switchClicks: 0,
     purchaseDate: new Date(now.setDate(now.getDate() - 700)).toISOString(),
     planDuration: '3 years',
+    isArchived: false,
   },
   {
-    id: '2',
     email: 'liam.jones@example.com',
     phone: '555-0102',
     planInfo: '', // Will be calculated
@@ -27,9 +26,9 @@ export const initialCustomers: Customer[] = [
     switchClicks: 0,
     purchaseDate: new Date(now.setDate(now.getDate() - 300)).toISOString(),
     planDuration: '1 year',
+    isArchived: false,
   },
   {
-    id: '3',
     email: 'sophia.davis@example.com',
     phone: '555-0103',
     planInfo: '', // Will be calculated
@@ -38,9 +37,9 @@ export const initialCustomers: Customer[] = [
     switchClicks: 0,
     purchaseDate: new Date(now.setDate(now.getDate() - 335)).toISOString(),
     planDuration: '1 year',
+    isArchived: false,
   },
   {
-    id: '4',
     email: 'noah.williams@example.com',
     phone: '555-0104',
     planInfo: 'Purchased 2 weeks ago',
@@ -48,9 +47,9 @@ export const initialCustomers: Customer[] = [
     avatarUrl: getAvatar(3),
     switchClicks: 0,
     purchaseDate: new Date(now.setDate(now.getDate() - 14)).toISOString(),
+    isArchived: false,
   },
   {
-    id: '5',
     email: 'ava.brown@example.com',
     phone: '555-0105',
     planInfo: 'Purchased 1 month ago',
@@ -58,5 +57,6 @@ export const initialCustomers: Customer[] = [
     avatarUrl: getAvatar(4),
     switchClicks: 0,
     purchaseDate: new Date(now.setDate(now.getDate() - 30)).toISOString(),
+    isArchived: false,
   },
 ];

@@ -33,6 +33,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "isArchived": {
+          "type": "boolean",
+          "description": "Indicates if the customer is archived (soft deleted)."
         }
       },
       "required": [
@@ -40,7 +44,8 @@
         "email",
         "phoneNumber",
         "subscriptionTenure",
-        "status"
+        "status",
+        "isArchived"
       ]
     }
   },
@@ -59,7 +64,7 @@
           "schema": {
             "$ref": "#/backend/entities/Customer"
           },
-          "description": "Stores customer information. Includes 'status' field to indicate 'active' or 'pending' status, and 'statusHistory' to track status changes.",
+          "description": "Stores customer information. Includes 'status' field to indicate 'active' or 'pending' status, 'statusHistory' to track status changes, and 'isArchived' for soft deletion.",
           "params": [
             {
               "name": "customerId",
@@ -69,6 +74,6 @@
         }
       }
     ],
-    "reasoning": "The database structure prioritizes preventing customer deletion as a primary requirement. To support the management of active and pending customers and the transition between these states, a single `customers` collection is used.  A `status` field within each customer document indicates whether the customer is 'active' or 'pending', and the `statusHistory` array tracks all state transitions. Since customer data should not be deleted, no deletion rules are added to the design. This design ensures a simple and straightforward approach to managing customer data and transitions while adhering to the no-deletion requirement.\n\nThis structure does not require authentication or authorization as it was not specified in the user request."
+    "reasoning": "The database structure prioritizes preventing customer deletion as a primary requirement. To support the management of active and pending customers and the transition between these states, a single `customers` collection is used. A `status` field within each customer document indicates whether the customer is 'active' or 'pending', and the `statusHistory` array tracks all state transitions. The `isArchived` field is used for soft deletion. This design ensures a simple and straightforward approach to managing customer data and transitions while adhering to the no-deletion requirement."
   }
 }
