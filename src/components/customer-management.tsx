@@ -158,14 +158,12 @@ export function CustomerManagement() {
 
   const handleAddFollowUp = useCallback(async (data: { phone: string; note: string; days: number }) => {
     if (!firestore || !customersCollection) return;
-
+  
     const followUpDate = add(new Date(), { days: data.days });
     
-    const q = where("phone", "==", data.phone);
     const querySnapshot = await getDocs(collection(firestore, "customers"));
     const matchingCustomers = querySnapshot.docs.filter(doc => doc.data().phone === data.phone);
-
-
+  
     if (matchingCustomers.length > 0) {
       const customerDoc = matchingCustomers[0];
       const customerRef = doc(firestore, 'customers', customerDoc.id);
@@ -179,12 +177,27 @@ export function CustomerManagement() {
         title: "Follow-up Scheduled",
         description: `Follow-up for customer with phone ${data.phone} scheduled in ${data.days} days.`,
       });
-
     } else {
-       toast({
-        title: "Customer Not Found",
-        description: `No customer with phone number ${data.phone} found.`,
-        variant: "destructive",
+      const newCustomer: Omit<Customer, 'id'> = {
+        email: `${data.phone}@example.com`,
+        phone: data.phone,
+        status: 'pending',
+        planDuration: '1 year',
+        purchaseDate: new Date().toISOString(),
+        expirationDate: add(new Date(), { years: 1 }).toISOString(),
+        notes: data.note,
+        followUpDate: followUpDate.toISOString(),
+        avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
+        switchClicks: 0,
+        isArchived: false,
+        planInfo: "Follow-up scheduled",
+      };
+      
+      addDocumentNonBlocking(customersCollection, newCustomer);
+  
+      toast({
+        title: "New Follow-up Customer Added",
+        description: `A new customer with phone ${data.phone} has been created with a follow-up.`,
       });
     }
      setFollowUpDialogOpen(false);
@@ -525,3 +538,5 @@ export function CustomerManagement() {
     </>
   );
 }
+
+    
