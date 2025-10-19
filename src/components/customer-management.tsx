@@ -429,6 +429,15 @@ export function CustomerManagement() {
       };
     });
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Set column widths
+    const columnWidths = [
+      { wch: 30 }, // Email
+      { wch: 15 }, // Days Remaining
+      { wch: 20 }, // Phone Number
+    ];
+    worksheet['!cols'] = columnWidths;
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
     XLSX.writeFile(workbook, "customers.xlsx");
