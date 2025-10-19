@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
+import { Badge } from "./ui/badge";
 
 export function CustomerManagement() {
   const firestore = useFirestore();
@@ -81,6 +83,27 @@ export function CustomerManagement() {
     }) || [];
   }, [customers]);
 
+  const customerCounts = useMemo(() => {
+    const counts = {
+      active: 0,
+      pending: 0,
+      archived: 0,
+      'follow-up': 0,
+    };
+    if (!isClient) return counts;
+    for (const customer of processedCustomers) {
+      if (customer.isArchived) {
+        counts.archived++;
+      } else if (customer.followUpDate) {
+        counts['follow-up']++;
+      } else if (customer.status === 'active') {
+        counts.active++;
+      } else if (customer.status === 'pending') {
+        counts.pending++;
+      }
+    }
+    return counts;
+  }, [processedCustomers, isClient]);
 
   const filteredCustomers = useMemo(() => {
     if (!isClient) return [];
@@ -399,6 +422,13 @@ export function CustomerManagement() {
     );
   }
 
+  const renderRadioItem = (value: keyof typeof customerCounts, label: string) => (
+    <DropdownMenuRadioItem value={value} className="flex justify-between">
+      <span>{label}</span>
+      <Badge variant="secondary" className="rounded-full">{customerCounts[value]}</Badge>
+    </DropdownMenuRadioItem>
+  );
+
   return (
     <>
       <div className="w-full space-y-4">
@@ -423,10 +453,10 @@ export function CustomerManagement() {
                     <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuRadioGroup value={filterStatus} onValueChange={(value) => setFilterStatus(value as CustomerStatus | "archived" | "follow-up")}>
-                      <DropdownMenuRadioItem value="active">Active Customer</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="pending">Pending Customer</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="follow-up">Follow Up</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="archived">Archive Customer</DropdownMenuRadioItem>
+                      {renderRadioItem('active', 'Active Customer')}
+                      {renderRadioItem('pending', 'Pending Customer')}
+                      {renderRadioItem('follow-up', 'Follow Up')}
+                      {renderRadioItem('archived', 'Archive Customer')}
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
               </DropdownMenu>
