@@ -416,7 +416,19 @@ export function CustomerManagement() {
   };
 
   const handleDownload = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredCustomers);
+    const dataToExport = filteredCustomers.map(c => {
+      let daysRemaining = 'N/A';
+      if (c.expirationDate) {
+        const remaining = differenceInDays(new Date(c.expirationDate), new Date());
+        daysRemaining = remaining > 0 ? `${remaining}` : 'Expired';
+      }
+      return {
+        'Email': c.email,
+        'Days Remaining': daysRemaining,
+        'Phone Number': c.phone,
+      };
+    });
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
     XLSX.writeFile(workbook, "customers.xlsx");
@@ -579,5 +591,7 @@ export function CustomerManagement() {
     </>
   );
 }
+
+    
 
     
