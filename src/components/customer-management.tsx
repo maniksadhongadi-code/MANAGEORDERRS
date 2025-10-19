@@ -11,7 +11,7 @@ import type { Customer, CustomerStatus } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Menu } from "lucide-react";
+import { PlusCircle, Menu, Download } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { add, formatDistanceToNow, differenceInDays } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -29,6 +29,7 @@ import {
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
+import * as XLSX from 'xlsx';
 
 export function CustomerManagement() {
   const firestore = useFirestore();
@@ -414,6 +415,13 @@ export function CustomerManagement() {
     });
   };
 
+  const handleDownload = () => {
+    const worksheet = XLSX.utils.json_to_sheet(filteredCustomers);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
+    XLSX.writeFile(workbook, "customers.xlsx");
+  };
+
   if (!isClient || isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -442,6 +450,9 @@ export function CustomerManagement() {
             <div className="flex gap-2">
               <Button onClick={openDialog}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add {filterStatus === 'follow-up' ? 'Follow-up' : 'Customer'}
+              </Button>
+              <Button variant="outline" onClick={handleDownload}>
+                  <Download className="mr-2 h-4 w-4" /> Download
               </Button>
               <DropdownMenu>
                   <DropdownMenuTrigger asChild>
