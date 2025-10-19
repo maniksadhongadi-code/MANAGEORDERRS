@@ -22,6 +22,7 @@ const formSchema = z.object({
   phone: z.string().min(7, { message: "Phone number is too short." }),
   planDuration: z.enum(['1 year', '3 years']),
   status: z.enum(['active', 'pending']),
+  oneAppAccess: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -39,6 +40,7 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
       phone: "",
       planDuration: '1 year',
       status: mode,
+      oneAppAccess: false,
     },
   });
 
@@ -48,6 +50,7 @@ export function AddCustomerForm({ onSubmit, mode }: AddCustomerFormProps) {
       phone: "",
       planDuration: '1 year',
       status: mode,
+      oneAppAccess: false,
     });
   }, [mode, form]);
 

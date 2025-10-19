@@ -165,7 +165,7 @@ export function CustomerManagement() {
   }, [processedCustomers, searchQuery, filterStatus, isClient, activeTab]);
 
 
-  const handleAddCustomer = useCallback((newCustomerData: { email: string; phone: string; planDuration: '1 year' | '3 years', status: CustomerStatus }) => {
+  const handleAddCustomer = useCallback((newCustomerData: { email: string; phone: string; planDuration: '1 year' | '3 years', status: CustomerStatus, oneAppAccess?: boolean }) => {
     if (!customersCollection) return;
 
     const purchaseDate = new Date();
@@ -179,7 +179,8 @@ export function CustomerManagement() {
       planDuration: newCustomerData.planDuration,
       purchaseDate: purchaseDate.toISOString(),
       expirationDate: expirationDate.toISOString(),
-      hasAccessPlan: newCustomerData.status === 'active'
+      hasAccessPlan: newCustomerData.status === 'active',
+      oneAppAccess: newCustomerData.oneAppAccess || false,
     };
     
     const completeCustomer: Omit<Customer, 'id'> = {
@@ -294,6 +295,7 @@ export function CustomerManagement() {
             switchClicks: 0,
             purchaseDate: purchaseDate.toISOString(),
             expirationDate: expirationDate.toISOString(),
+            oneAppAccess: customer.oneAppAccess || false, // Preserve the oneAppAccess flag
           };
       } else {
           updateData = {
