@@ -3,12 +3,14 @@
 import React, { useMemo, type ReactNode, useEffect } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { initiateAnonymousSignIn } from './non-blocking-login';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
 }
+
+const SPECIAL_USER_EMAIL = 'user@example.com';
+const SPECIAL_USER_PASS = 'shopXzone';
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const firebaseServices = useMemo(() => {
@@ -19,9 +21,21 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   useEffect(() => {
     const auth = getAuth(firebaseServices.firebaseApp);
     // When the component mounts, sign in the user anonymously if they are not already signed in.
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        initiateAnonymousSignIn(auth);
+        try {
+            await signInWithEmailAndPassword(auth, SPECIAL_USER_EMAIL, SPECIAL_USER_PASS);
+        } catch (error: any) {
+            if (error.code === 'auth/user-not-found') {
+                try {
+                    await createUserWithEmailAndPassword(auth, SPECIAL_USER_EMAIL, SPECIAL_USER_PASS);
+                } catch (creationError) {
+                    console.error('Failed to create special user:', creationError);
+                }
+            } else if (error.code !== 'auth/wrong-password') {
+                 console.error('Error signing in special user:', error);
+            }
+        }
       }
     });
 

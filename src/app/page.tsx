@@ -5,23 +5,29 @@ import { useState, useEffect } from "react";
 import { CustomerManagement } from "@/components/customer-management";
 import { Login } from "@/components/login";
 import { Logo } from "@/components/icons";
-
-const AUTH_KEY = 'sanatani-shop-auth';
+import { useAuth } from "@/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const auth = useAuth();
 
   useEffect(() => {
     setIsClient(true);
-    const authStatus = localStorage.getItem(AUTH_KEY);
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
+    if (auth) {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+          setIsAuthenticated(true);
+        } else {
+          setIsAuthenticated(false);
+        }
+      });
+      return () => unsubscribe();
     }
-  }, []);
+  }, [auth]);
 
   const handleLoginSuccess = () => {
-    localStorage.setItem(AUTH_KEY, 'true');
     setIsAuthenticated(true);
   };
 
