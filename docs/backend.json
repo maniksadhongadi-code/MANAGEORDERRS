@@ -45,6 +45,14 @@
         "notes": {
           "type": "string",
           "description": "Notes about the customer for follow-up."
+        },
+        "hasAccessPlan": {
+          "type": "boolean",
+          "description": "Indicates if the customer has a 40+ Access Plan."
+        },
+        "autodeskApp": {
+          "type": "string",
+          "description": "The assigned Autodesk application for the customer."
         }
       },
       "required": [
@@ -55,6 +63,23 @@
         "status",
         "isArchived"
       ]
+    },
+    "AutodeskApp": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AutodeskApp",
+      "type": "object",
+      "description": "Represents an Autodesk application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AutodeskApp entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the Autodesk application."
+        }
+      },
+      "required": ["id", "name"]
     }
   },
   "auth": {

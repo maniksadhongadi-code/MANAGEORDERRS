@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { CustomerList } from "./customer-list";
 import { AddCustomerForm } from "./add-customer-form";
 import { AddFollowUpForm } from "./add-follow-up-form";
-import type { Customer, CustomerStatus } from "@/lib/types";
+import { AddAccessPlanForm } from "./add-access-plan-form";
+import type { Customer, CustomerStatus, AutodeskApp } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Menu, Download } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
@@ -53,6 +54,9 @@ export function CustomerManagement() {
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const [customerForNotes, setCustomerForNotes] = useState<Customer | null>(null);
   const [editingNotes, setEditingNotes] = useState("");
+
+  const [accessPlanDialogOpen, setAccessPlanDialogOpen] = useState(false);
+  const [customerForAccessPlan, setCustomerForAccessPlan] = useState<Customer | null>(null);
 
   const { toast } = useToast();
 
@@ -415,6 +419,28 @@ export function CustomerManagement() {
     });
   };
 
+  const handleAddAccessPlanClick = (customer: Customer) => {
+    setCustomerForAccessPlan(customer);
+    setAccessPlanDialogOpen(true);
+  };
+
+  const handleSaveAccessPlan = (data: { autodeskApp: string }) => {
+    if (!firestore || !customerForAccessPlan) return;
+
+    const customerRef = doc(firestore, 'customers', customerForAccessPlan.id);
+    updateDocumentNonBlocking(customerRef, {
+      hasAccessPlan: true,
+      autodeskApp: data.autodeskApp,
+    });
+
+    setAccessPlanDialogOpen(false);
+    setCustomerForAccessPlan(null);
+    toast({
+      title: "Access Plan Added",
+      description: `An access plan has been added for ${customerForAccessPlan.email}.`,
+    });
+  };
+
   const handleDownload = () => {
     const dataToExport = filteredCustomers.map(c => {
       let daysRemaining = 'N/A';
@@ -502,6 +528,7 @@ export function CustomerManagement() {
             onEditReasonClick={handleEditReasonClick}
             onDeleteClick={handleDeleteClick}
             onNotesClick={handleNotesClick}
+            onAddAccessPlanClick={handleAddAccessPlanClick}
             currentView={filterStatus}
           />
       </div>
@@ -524,6 +551,21 @@ export function CustomerManagement() {
             <DialogTitle>Add Follow-up</DialogTitle>
           </DialogHeader>
           <AddFollowUpForm onSubmit={handleAddFollowUp} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={accessPlanDialogOpen} onOpenChange={setAccessPlanDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add 40+ Access Plan</DialogTitle>
+            <DialogDescription>
+              Select an Autodesk app for {customerForAccessPlan?.email}.
+            </DialogDescription>
+          </DialogHeader>
+          <AddAccessPlanForm
+            customer={customerForAccessPlan}
+            onSubmit={handleSaveAccessPlan}
+          />
         </DialogContent>
       </Dialog>
 
@@ -604,4 +646,5 @@ export function CustomerManagement() {
     
 
     
+
 

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat, Trash2, Undo, Pencil, Delete, FileText, Dot } from "lucide-react";
+import { Repeat, Trash2, Undo, Pencil, Delete, FileText, Dot, PlusCircle } from "lucide-react";
 import Image from "next/image";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "./ui/badge";
@@ -26,10 +26,11 @@ interface CustomerListProps {
   onEditReasonClick?: (customer: Customer) => void;
   onDeleteClick?: (customerId: string) => void;
   onNotesClick: (customer: Customer) => void;
+  onAddAccessPlanClick: (customer: Customer) => void;
   currentView: CustomerStatus | "archived" | "follow-up";
 }
 
-export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, onDeleteClick, onNotesClick, currentView }: CustomerListProps) {
+export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, onDeleteClick, onNotesClick, onAddAccessPlanClick, currentView }: CustomerListProps) {
   if (customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
@@ -41,6 +42,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
 
   const isArchivedView = currentView === 'archived';
   const isFollowUpView = currentView === 'follow-up';
+  const isActiveView = currentView === 'active';
   const now = new Date();
 
   return (
@@ -52,6 +54,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>{isArchivedView ? 'Reason for Archival' : isFollowUpView ? 'Follow-up Date' : 'Details'}</TableHead>
+              {isActiveView && <TableHead>40+ Access Plan</TableHead>}
               <TableHead>Follow Up</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -104,6 +107,18 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                 <TableCell className={cn(isExpiringSoon && "text-destructive font-semibold")}>
                   {isArchivedView ? customer.reasonForArchival : isFollowUpView ? (customer.followUpDate ? new Date(customer.followUpDate).toLocaleDateString() : 'N/A') : customer.planInfo}
                 </TableCell>
+                {isActiveView && (
+                  <TableCell>
+                    {customer.hasAccessPlan && customer.autodeskApp ? (
+                      <Badge variant="outline">{customer.autodeskApp}</Badge>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => onAddAccessPlanClick(customer)}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Plan
+                      </Button>
+                    )}
+                  </TableCell>
+                )}
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <span>{customer.phone}</span>
@@ -227,7 +242,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                                 size="icon"
                                 onClick={() => onArchiveClick(customer.id)}
                                 aria-label={`Archive customer ${customer.email}`}
-                                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                className="text-destructive hover-bg-destructive/10 hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
