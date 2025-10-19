@@ -126,14 +126,14 @@ export function CustomerManagement() {
     } else if (filterStatus === 'follow-up') {
       filtered = filtered.filter(c => !c.isArchived && c.followUpDate);
     }
-    else if (filterStatus === 'active') {
+    else if (filterStatus === 'active' || filterStatus === 'pending') {
         if (activeTab === '40-plus-access') {
-            filtered = filtered.filter(c => c.status === 'active' && !c.oneAppAccess);
+            filtered = filtered.filter(c => c.status === filterStatus && !c.oneAppAccess && !c.isArchived && !c.followUpDate);
         } else { // '1-app-access-only'
-            filtered = filtered.filter(c => c.status === 'active' && c.oneAppAccess);
+            filtered = filtered.filter(c => c.status === filterStatus && c.oneAppAccess && !c.isArchived && !c.followUpDate);
         }
     }
-    else { // pending
+    else { // This case should ideally not be hit with the current logic, but as a fallback
       filtered = filtered.filter(c => !c.isArchived && c.status === filterStatus && !c.followUpDate);
     }
     
@@ -208,11 +208,11 @@ export function CustomerManagement() {
         const newCustomer: Omit<Customer, 'id'> = {
             email: data.email,
             phone: data.phone,
-            status: 'active',
+            status: filterStatus === 'pending' ? 'pending' : 'active',
             planDuration: '3 years',
             purchaseDate: purchaseDate.toISOString(),
             expirationDate: expirationDate.toISOString(),
-            hasAccessPlan: true,
+            hasAccessPlan: filterStatus === 'active',
             autodeskApp: data.autodeskApp,
             oneAppAccess: true,
             avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
@@ -225,7 +225,7 @@ export function CustomerManagement() {
             title: "Customer Added",
             description: `${data.email} has been added to '1 App Access Only'.`,
         });
-    }, [customersCollection, toast]);
+    }, [customersCollection, toast, filterStatus]);
 
   const handleAddFollowUp = useCallback(async (data: { phone: string; note: string; days: number }) => {
     if (!firestore || !customersCollection) return;
@@ -295,7 +295,8 @@ export function CustomerManagement() {
             switchClicks: 0,
             purchaseDate: purchaseDate.toISOString(),
             expirationDate: expirationDate.toISOString(),
-            oneAppAccess: customer.oneAppAccess || false, // Preserve the oneAppAccess flag
+            hasAccessPlan: true,
+            oneAppAccess: customer.oneAppAccess || false, 
           };
       } else {
           updateData = {
@@ -303,6 +304,7 @@ export function CustomerManagement() {
             switchClicks: 0,
             purchaseDate: deleteField() as any,
             expirationDate: deleteField() as any,
+            hasAccessPlan: false,
           };
       }
       
@@ -431,22 +433,19 @@ export function CustomerManagement() {
   }, [customers, firestore, toast]);
   
   const openDialog = () => {
-    if (filterStatus === 'active') {
-        if (activeTab === '1-app-access-only') {
-            setOneAppDialogOpen(true);
-        } else {
-            setDialogMode('active');
-            setDialogOpen(true);
-        }
-    }
-    else if (filterStatus === 'follow-up') {
+    if (filterStatus === 'follow-up') {
       setFollowUpDialogOpen(true);
     } else if (filterStatus === 'archived') {
+      // This could be changed if adding archived customers directly is needed
       setDialogMode('pending');
       setDialogOpen(true);
-    } else {
-      setDialogMode(filterStatus);
-      setDialogOpen(true);
+    } else { // active or pending
+      if (activeTab === '1-app-access-only') {
+        setOneAppDialogOpen(true);
+      } else {
+        setDialogMode(filterStatus);
+        setDialogOpen(true);
+      }
     }
   };
 
@@ -537,7 +536,7 @@ export function CustomerManagement() {
   );
 
   const renderContent = () => {
-    if (filterStatus === 'active') {
+    if (filterStatus === 'active' || filterStatus === 'pending') {
         return (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
@@ -603,9 +602,7 @@ export function CustomerManagement() {
                   <PlusCircle className="mr-2 h-4 w-4" /> Add {
                     filterStatus === 'follow-up' 
                     ? 'Follow-up' 
-                    : (filterStatus === 'active' && activeTab === '1-app-access-only') 
-                      ? 'Customer'
-                      : 'Customer'
+                    : 'Customer'
                   }
               </Button>
               <Button variant="outline" onClick={handleDownload}>
