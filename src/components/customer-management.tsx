@@ -8,6 +8,7 @@ import { CustomerList } from "./customer-list";
 import { AddCustomerForm } from "./add-customer-form";
 import { AddFollowUpForm } from "./add-follow-up-form";
 import { AddAccessPlanForm } from "./add-access-plan-form";
+import { AddOneAppCustomerForm } from "./add-one-app-customer-form";
 import type { Customer, CustomerStatus, AutodeskApp } from "@/lib/types";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -31,6 +32,8 @@ import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { Badge } from "./ui/badge";
 import * as XLSX from 'xlsx';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+
 
 export function CustomerManagement() {
   const firestore = useFirestore();
@@ -42,6 +45,7 @@ export function CustomerManagement() {
   const [isClient, setIsClient] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
+  const [oneAppDialogOpen, setOneAppDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<CustomerStatus>('active');
   const [archiveConfirmationOpen, setArchiveConfirmationOpen] = useState(false);
   const [customerToArchive, setCustomerToArchive] = useState<string | null>(null);
@@ -57,6 +61,8 @@ export function CustomerManagement() {
 
   const [accessPlanDialogOpen, setAccessPlanDialogOpen] = useState(false);
   const [customerForAccessPlan, setCustomerForAccessPlan] = useState<Customer | null>(null);
+  
+  const [activeTab, setActiveTab] = useState("40-plus-access");
 
   const { toast } = useToast();
 
@@ -120,7 +126,14 @@ export function CustomerManagement() {
     } else if (filterStatus === 'follow-up') {
       filtered = filtered.filter(c => !c.isArchived && c.followUpDate);
     }
-    else {
+    else if (filterStatus === 'active') {
+        if (activeTab === '40-plus-access') {
+            filtered = filtered.filter(c => c.status === 'active' && !c.oneAppAccess);
+        } else { // '1-app-access-only'
+            filtered = filtered.filter(c => c.status === 'active' && c.oneAppAccess);
+        }
+    }
+    else { // pending
       filtered = filtered.filter(c => !c.isArchived && c.status === filterStatus && !c.followUpDate);
     }
     
@@ -149,7 +162,7 @@ export function CustomerManagement() {
       if (a.status !== 'active' && b.status === 'active') return 1;
       return 0;
     });
-  }, [processedCustomers, searchQuery, filterStatus, isClient]);
+  }, [processedCustomers, searchQuery, filterStatus, isClient, activeTab]);
 
 
   const handleAddCustomer = useCallback((newCustomerData: { email: string; phone: string; planDuration: '1 year' | '3 years', status: CustomerStatus }) => {
@@ -166,6 +179,7 @@ export function CustomerManagement() {
       planDuration: newCustomerData.planDuration,
       purchaseDate: purchaseDate.toISOString(),
       expirationDate: expirationDate.toISOString(),
+      hasAccessPlan: newCustomerData.status === 'active'
     };
     
     const completeCustomer: Omit<Customer, 'id'> = {
@@ -183,6 +197,34 @@ export function CustomerManagement() {
       description: `${newCustomerData.email} has been added as a ${newCustomerData.status} customer.`,
     });
   }, [customersCollection, toast]);
+
+    const handleAddOneAppCustomer = useCallback((data: {email: string, phone: string, autodeskApp: string}) => {
+        if (!customersCollection) return;
+
+        const purchaseDate = new Date();
+        const expirationDate = add(purchaseDate, { years: 3 });
+
+        const newCustomer: Omit<Customer, 'id'> = {
+            email: data.email,
+            phone: data.phone,
+            status: 'active',
+            planDuration: '3 years',
+            purchaseDate: purchaseDate.toISOString(),
+            expirationDate: expirationDate.toISOString(),
+            hasAccessPlan: true,
+            autodeskApp: data.autodeskApp,
+            oneAppAccess: true,
+            avatarUrl: PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)].imageUrl,
+            switchClicks: 0,
+            isArchived: false,
+        };
+        addDocumentNonBlocking(customersCollection, newCustomer);
+        setOneAppDialogOpen(false);
+        toast({
+            title: "Customer Added",
+            description: `${data.email} has been added to '1 App Access Only'.`,
+        });
+    }, [customersCollection, toast]);
 
   const handleAddFollowUp = useCallback(async (data: { phone: string; note: string; days: number }) => {
     if (!firestore || !customersCollection) return;
@@ -387,7 +429,15 @@ export function CustomerManagement() {
   }, [customers, firestore, toast]);
   
   const openDialog = () => {
-    if (filterStatus === 'follow-up') {
+    if (filterStatus === 'active') {
+        if (activeTab === '1-app-access-only') {
+            setOneAppDialogOpen(true);
+        } else {
+            setDialogMode('active');
+            setDialogOpen(true);
+        }
+    }
+    else if (filterStatus === 'follow-up') {
       setFollowUpDialogOpen(true);
     } else if (filterStatus === 'archived') {
       setDialogMode('pending');
@@ -484,6 +534,58 @@ export function CustomerManagement() {
     </DropdownMenuRadioItem>
   );
 
+  const renderContent = () => {
+    if (filterStatus === 'active') {
+        return (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="40-plus-access">40+ Access</TabsTrigger>
+                    <TabsTrigger value="1-app-access-only">1 App Access Only</TabsTrigger>
+                </TabsList>
+                <TabsContent value="40-plus-access">
+                    <CustomerList
+                        customers={filteredCustomers}
+                        onSwitchClick={handleSwitchClick}
+                        onArchiveClick={handleArchiveClick}
+                        onRestoreClick={handleRestoreClick}
+                        onEditReasonClick={handleEditReasonClick}
+                        onDeleteClick={handleDeleteClick}
+                        onNotesClick={handleNotesClick}
+                        onAddAccessPlanClick={handleAddAccessPlanClick}
+                        currentView={filterStatus}
+                    />
+                </TabsContent>
+                <TabsContent value="1-app-access-only">
+                    <CustomerList
+                        customers={filteredCustomers}
+                        onSwitchClick={handleSwitchClick}
+                        onArchiveClick={handleArchiveClick}
+                        onRestoreClick={handleRestoreClick}
+                        onEditReasonClick={handleEditReasonClick}
+                        onDeleteClick={handleDeleteClick}
+                        onNotesClick={handleNotesClick}
+                        onAddAccessPlanClick={handleAddAccessPlanClick}
+                        currentView={filterStatus}
+                    />
+                </TabsContent>
+            </Tabs>
+        )
+    }
+    return (
+        <CustomerList
+            customers={filteredCustomers}
+            onSwitchClick={handleSwitchClick}
+            onArchiveClick={handleArchiveClick}
+            onRestoreClick={handleRestoreClick}
+            onEditReasonClick={handleEditReasonClick}
+            onDeleteClick={handleDeleteClick}
+            onNotesClick={handleNotesClick}
+            onAddAccessPlanClick={handleAddAccessPlanClick}
+            currentView={filterStatus}
+        />
+    )
+  }
+
   return (
     <>
       <div className="w-full space-y-4">
@@ -496,7 +598,13 @@ export function CustomerManagement() {
             />
             <div className="flex gap-2">
               <Button onClick={openDialog}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add {filterStatus === 'follow-up' ? 'Follow-up' : 'Customer'}
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add {
+                    filterStatus === 'follow-up' 
+                    ? 'Follow-up' 
+                    : (filterStatus === 'active' && activeTab === '1-app-access-only') 
+                      ? 'Customer'
+                      : 'Customer'
+                  }
               </Button>
               <Button variant="outline" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" /> Download
@@ -520,17 +628,7 @@ export function CustomerManagement() {
               </DropdownMenu>
             </div>
           </div>
-          <CustomerList
-            customers={filteredCustomers}
-            onSwitchClick={handleSwitchClick}
-            onArchiveClick={handleArchiveClick}
-            onRestoreClick={handleRestoreClick}
-            onEditReasonClick={handleEditReasonClick}
-            onDeleteClick={handleDeleteClick}
-            onNotesClick={handleNotesClick}
-            onAddAccessPlanClick={handleAddAccessPlanClick}
-            currentView={filterStatus}
-          />
+          {renderContent()}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -551,6 +649,18 @@ export function CustomerManagement() {
             <DialogTitle>Add Follow-up</DialogTitle>
           </DialogHeader>
           <AddFollowUpForm onSubmit={handleAddFollowUp} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={oneAppDialogOpen} onOpenChange={setOneAppDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add 1 App Access Customer</DialogTitle>
+            <DialogDescription>
+                Add a new customer with access to a single application for 3 years.
+            </DialogDescription>
+          </DialogHeader>
+          <AddOneAppCustomerForm onSubmit={handleAddOneAppCustomer} />
         </DialogContent>
       </Dialog>
 
@@ -642,9 +752,3 @@ export function CustomerManagement() {
     </>
   );
 }
-
-    
-
-    
-
-

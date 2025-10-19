@@ -19,6 +19,7 @@ export type Customer = {
   followUpDate?: string; // ISO 8601 date string for follow-up
   hasAccessPlan?: boolean;
   autodeskApp?: string;
+  oneAppAccess?: boolean; // To distinguish customers in the '1 App Access Only' tab
 };
 
 export type AutodeskApp = {
