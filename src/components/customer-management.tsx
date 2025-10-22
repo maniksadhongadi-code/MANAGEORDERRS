@@ -554,6 +554,7 @@ export function CustomerManagement() {
                         onNotesClick={handleNotesClick}
                         onAddAccessPlanClick={handleAddAccessPlanClick}
                         currentView={filterStatus}
+                        activeTab={activeTab}
                     />
                 </TabsContent>
                 <TabsContent value="1-app-access-only">
@@ -567,6 +568,7 @@ export function CustomerManagement() {
                         onNotesClick={handleNotesClick}
                         onAddAccessPlanClick={handleAddAccessPlanClick}
                         currentView={filterStatus}
+                        activeTab={activeTab}
                     />
                 </TabsContent>
             </Tabs>
@@ -583,6 +585,7 @@ export function CustomerManagement() {
             onNotesClick={handleNotesClick}
             onAddAccessPlanClick={handleAddAccessPlanClick}
             currentView={filterStatus}
+            activeTab={activeTab}
         />
     )
   }

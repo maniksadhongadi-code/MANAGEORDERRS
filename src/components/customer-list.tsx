@@ -28,9 +28,10 @@ interface CustomerListProps {
   onNotesClick: (customer: Customer) => void;
   onAddAccessPlanClick: (customer: Customer) => void;
   currentView: CustomerStatus | "archived" | "follow-up";
+  activeTab: string;
 }
 
-export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, onDeleteClick, onNotesClick, onAddAccessPlanClick, currentView }: CustomerListProps) {
+export function CustomerList({ customers, onSwitchClick, onArchiveClick, onRestoreClick, onEditReasonClick, onDeleteClick, onNotesClick, onAddAccessPlanClick, currentView, activeTab }: CustomerListProps) {
   if (customers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
@@ -42,7 +43,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
 
   const isArchivedView = currentView === 'archived';
   const isFollowUpView = currentView === 'follow-up';
-  const isActiveView = currentView === 'active';
+  const isOneAppAccessTab = activeTab === '1-app-access-only';
   const now = new Date();
 
   return (
@@ -54,7 +55,8 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>{isArchivedView ? 'Reason for Archival' : isFollowUpView ? 'Follow-up Date' : 'Details'}</TableHead>
-              {isActiveView && <TableHead>40+ Access Plan</TableHead>}
+              {activeTab === '40-plus-access' && (currentView === 'active' || currentView === 'pending') && <TableHead>40+ Access Plan</TableHead>}
+              {isOneAppAccessTab && <TableHead>Assigned App</TableHead>}
               <TableHead>Follow Up</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -107,15 +109,25 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                 <TableCell className={cn(isExpiringSoon && "text-destructive font-semibold")}>
                   {isArchivedView ? customer.reasonForArchival : isFollowUpView ? (customer.followUpDate ? new Date(customer.followUpDate).toLocaleDateString() : 'N/A') : customer.planInfo}
                 </TableCell>
-                {isActiveView && (
+                {activeTab === '40-plus-access' && (currentView === 'active' || currentView === 'pending') && (
                   <TableCell>
                     {customer.hasAccessPlan && customer.autodeskApp ? (
                       <Badge variant="outline">{customer.autodeskApp}</Badge>
                     ) : (
+                      customer.status === 'active' && 
                       <Button variant="outline" size="sm" onClick={() => onAddAccessPlanClick(customer)}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Plan
                       </Button>
+                    )}
+                  </TableCell>
+                )}
+                {isOneAppAccessTab && (
+                   <TableCell>
+                    {customer.autodeskApp ? (
+                      <Badge variant="outline">{customer.autodeskApp}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">Not assigned</span>
                     )}
                   </TableCell>
                 )}
