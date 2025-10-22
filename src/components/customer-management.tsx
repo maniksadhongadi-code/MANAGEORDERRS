@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -72,24 +73,31 @@ export function CustomerManagement() {
 
   const processedCustomers = useMemo(() => {
     return customers?.map(c => {
-       if (c.status === 'active' && c.expirationDate) {
-        const expirationDate = new Date(c.expirationDate);
+       const expirationDate = c.expirationDate ? new Date(c.expirationDate) : null;
+       
+       if (c.status === 'active' && expirationDate) {
         const daysRemaining = differenceInDays(expirationDate, new Date());
-        
         return {
           ...c,
           planInfo: `${daysRemaining > 0 ? `${daysRemaining} days remaining` : `Expired ${formatDistanceToNow(expirationDate)} ago`}`,
         };
       }
-      if (c.status === 'pending' && c.expirationDate) {
-        const expirationDate = new Date(c.expirationDate);
+      
+      if (c.status === 'pending' && expirationDate) {
         const daysRemaining = differenceInDays(expirationDate, new Date());
-        
         return {
           ...c,
           planInfo: `Expires in ${daysRemaining} days`,
         };
       }
+      
+      if (c.status === 'pending' && c.purchaseDate) {
+        return {
+          ...c,
+          planInfo: `Purchased ${formatDistanceToNow(new Date(c.purchaseDate))} ago`,
+        };
+      }
+      
       return c;
     }) || [];
   }, [customers]);
