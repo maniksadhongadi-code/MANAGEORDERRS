@@ -43,7 +43,6 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
 
   const isArchivedView = currentView === 'archived';
   const isFollowUpView = currentView === 'follow-up';
-  const isOneAppAccessTab = activeTab === '1-app-access-only';
   const now = new Date();
 
   return (
@@ -56,7 +55,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
               <TableHead>Status</TableHead>
               <TableHead>{isArchivedView ? 'Reason for Archival' : isFollowUpView ? 'Follow-up Date' : 'Details'}</TableHead>
               {activeTab === '40-plus-access' && (currentView === 'active' || currentView === 'pending') && <TableHead>40+ Access Plan</TableHead>}
-              {isOneAppAccessTab && <TableHead>Assigned App</TableHead>}
+              {activeTab === '1-app-access-only' && <TableHead>Assigned App</TableHead>}
               <TableHead>Follow Up</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
@@ -114,11 +113,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                     {customer.hasAccessPlan && customer.autodeskApp ? (
                       <Badge variant="outline">{customer.autodeskApp}</Badge>
                     ) : (
-                      customer.status === 'active' && 
-                      <Button variant="outline" size="sm" onClick={() => onAddAccessPlanClick(customer)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Plan
-                      </Button>
+                      customer.status === 'active' && null
                     )}
                   </TableCell>
                 )}
