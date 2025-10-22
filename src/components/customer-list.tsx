@@ -24,7 +24,7 @@ interface CustomerListProps {
   onArchiveClick?: (customerId: string) => void;
   onRestoreClick?: (customerId: string) => void;
   onEditReasonClick?: (customer: Customer) => void;
-  onDeleteClick?: (customerId: string) => void;
+  onDeleteClick?: (customerId: string, view: 'archived' | 'follow-up') => void;
   onNotesClick: (customer: Customer) => void;
   onAddAccessPlanClick: (customer: Customer) => void;
   currentView: CustomerStatus | "archived" | "follow-up";
@@ -204,7 +204,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => onDeleteClick(customer.id)}
+                                onClick={() => onDeleteClick(customer.id, 'archived')}
                                 aria-label={`Permanently delete customer ${customer.email}`}
                                 className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                               >
@@ -222,6 +222,30 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                            </TooltipContent>
                         </Tooltip>
                        </>
+                    )}
+                    {isFollowUpView && onDeleteClick && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onDeleteClick(customer.id, 'follow-up')}
+                            aria-label={`Permanently delete customer ${customer.email}`}
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                            {customer.deleteClicks && customer.deleteClicks > 0 ? (
+                              <Badge variant="destructive" className="ml-2 tabular-nums">
+                                {customer.deleteClicks}/4
+                              </Badge>
+                            ) : null}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Click 4 times to permanently delete.</p>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                     {!isArchivedView && !isFollowUpView &&(
                       <>

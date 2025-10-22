@@ -102,15 +102,18 @@ export function CustomerManagement() {
       'follow-up': 0,
     };
     if (!isClient) return counts;
+
+    const activeCustomers = processedCustomers.filter(c => !c.isArchived && !c.followUpDate && c.status === 'active');
+    const pendingCustomers = processedCustomers.filter(c => !c.isArchived && !c.followUpDate && c.status === 'pending');
+    
+    counts.active = activeCustomers.length;
+    counts.pending = pendingCustomers.length;
+    
     for (const customer of processedCustomers) {
       if (customer.isArchived) {
         counts.archived++;
       } else if (customer.followUpDate) {
         counts['follow-up']++;
-      } else if (customer.status === 'active') {
-        counts.active++;
-      } else if (customer.status === 'pending') {
-        counts.pending++;
       }
     }
     return counts;
@@ -232,8 +235,10 @@ export function CustomerManagement() {
   
     const followUpDate = add(new Date(), { days: data.days });
     
+    const q = where("phone", "==", data.phone);
     const querySnapshot = await getDocs(collection(firestore, "customers"));
-    const matchingCustomers = querySnapshot.docs.filter(doc => doc.data().phone === data.phone);
+    const matchingCustomers = querySnapshot.docs.filter(doc => doc.data().phone === data.phone && !doc.data().isArchived);
+
   
     if (matchingCustomers.length > 0) {
       const customerDoc = matchingCustomers[0];
@@ -406,7 +411,7 @@ export function CustomerManagement() {
     });
   };
 
-  const handleDeleteClick = useCallback((customerId: string) => {
+  const handleDeleteClick = useCallback((customerId: string, view: 'archived' | 'follow-up') => {
     if (!firestore) return;
     const customer = customers?.find(c => c.id === customerId);
     if (!customer) return;
@@ -414,7 +419,9 @@ export function CustomerManagement() {
     const customerRef = doc(firestore, 'customers', customerId);
     const newDeleteClicks = (customer.deleteClicks || 0) + 1;
 
-    if (newDeleteClicks >= 5) {
+    const requiredClicks = view === 'archived' ? 5 : 4;
+
+    if (newDeleteClicks >= requiredClicks) {
       deleteDocumentNonBlocking(customerRef);
       toast({
         title: "Customer Deleted",
@@ -425,7 +432,7 @@ export function CustomerManagement() {
       updateDocumentNonBlocking(customerRef, { deleteClicks: newDeleteClicks });
       toast({
         title: `Deleting ${customer.email}...`,
-        description: `Click ${5 - newDeleteClicks} more times to permanently delete.`,
+        description: `Click ${requiredClicks - newDeleteClicks} more times to permanently delete.`,
         duration: 2000,
         variant: "destructive",
       });
