@@ -508,6 +508,7 @@ export function CustomerManagement() {
         'Email': c.email,
         'Days Remaining': daysRemaining,
         'Phone Number': c.phone,
+        'Assigned App': c.autodeskApp || 'N/A',
       };
     });
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -517,6 +518,7 @@ export function CustomerManagement() {
       { wch: 30 }, // Email
       { wch: 15 }, // Days Remaining
       { wch: 20 }, // Phone Number
+      { wch: 25 }, // Assigned App
     ];
     worksheet['!cols'] = columnWidths;
 
