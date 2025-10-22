@@ -122,7 +122,7 @@ export function CustomerList({ customers, onSwitchClick, onArchiveClick, onResto
                     )}
                   </TableCell>
                 )}
-                {isOneAppAccessTab && (
+                {activeTab === '1-app-access-only' && (
                    <TableCell>
                     {customer.autodeskApp ? (
                       <Badge variant="outline">{customer.autodeskApp}</Badge>
