@@ -23,27 +23,30 @@ export function Login({ onLoginSuccess }: LoginProps) {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!auth) {
+        setError('Authentication service is not available. Please try again later.');
+        return;
+    }
+
+    if (password !== 'shopXzone') {
+        setError('Incorrect password. Please try again.');
+        return;
+    }
+    
     try {
       await signInWithEmailAndPassword(auth, email, password);
       onLoginSuccess();
     } catch (e: any) {
-      if(password === 'shopXzone' && auth) {
-         try {
-            // This is a special case for the initial password.
-            // We will create the user if they don't exist.
-            await signInWithEmailAndPassword(auth, email, password);
-         } catch (e: any) {
-            if (e.code === 'auth/user-not-found') {
-                // Ignore user not found for the special password.
-            } else if (e.code === 'auth/wrong-password') {
-                setError('Incorrect password. Please try again.');
-            } else {
-                setError('An error occurred. Please try again.');
-            }
-         }
-      } else {
-        setError('Incorrect password. Please try again.');
-      }
+        // The user creation is handled by the FirebaseClientProvider,
+        // so we just need to handle wrong password here.
+        if (e.code === 'auth/wrong-password') {
+            setError('Incorrect password. Please try again.');
+        } else if (e.code !== 'auth/user-not-found') {
+            // We ignore user-not-found because the provider will create it.
+            // For other errors, we can show a generic message.
+            setError('An unexpected error occurred. Please try again.');
+        }
+        // The onAuthStateChanged listener in the provider will handle success.
     }
   };
 
@@ -91,3 +94,4 @@ export function Login({ onLoginSuccess }: LoginProps) {
     </div>
   );
 }
+
