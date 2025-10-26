@@ -3,35 +3,18 @@
 
 import { useState, useEffect } from "react";
 import { CustomerManagement } from "@/components/customer-management";
-import { Login } from "@/components/login";
 import { Logo } from "@/components/icons";
-import { useAuth } from "@/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { useUser } from "@/firebase";
 
 export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isUserLoading } = useUser();
   const [isClient, setIsClient] = useState(false);
-  const auth = useAuth();
 
   useEffect(() => {
     setIsClient(true);
-    if (auth) {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        if (user) {
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-        }
-      });
-      return () => unsubscribe();
-    }
-  }, [auth]);
+  }, []);
 
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
-  if (!isClient) {
+  if (!isClient || isUserLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-primary"></div>
@@ -52,7 +35,12 @@ export default function Home() {
         </div>
       </header>
       <main className="container mx-auto p-4 md:p-6">
-        {isAuthenticated ? <CustomerManagement /> : <Login onLoginSuccess={handleLoginSuccess} />}
+        {user ? <CustomerManagement /> : (
+            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-20 text-center">
+                <h3 className="text-lg font-semibold text-muted-foreground">Authenticating...</h3>
+                <p className="text-sm text-muted-foreground">Please wait while we secure your session.</p>
+            </div>
+        )}
       </main>
       <footer className="border-t py-6">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
