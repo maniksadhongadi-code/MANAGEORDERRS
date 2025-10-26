@@ -20,22 +20,30 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
 
   useEffect(() => {
     const auth = getAuth(firebaseServices.firebaseApp);
-    // When the component mounts, sign in the user anonymously if they are not already signed in.
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!user) {
+    
+    const attemptSignInOrCreateUser = async () => {
         try {
             await signInWithEmailAndPassword(auth, SPECIAL_USER_EMAIL, SPECIAL_USER_PASS);
-        } catch (error: any) {
-            if (error.code === 'auth/user-not-found') {
+        } catch (signInError: any) {
+            if (signInError.code === 'auth/user-not-found') {
                 try {
                     await createUserWithEmailAndPassword(auth, SPECIAL_USER_EMAIL, SPECIAL_USER_PASS);
                 } catch (creationError) {
                     console.error('Failed to create special user:', creationError);
                 }
-            } else if (error.code !== 'auth/wrong-password') {
-                 console.error('Error signing in special user:', error);
+            } else if (signInError.code !== 'auth/wrong-password') {
+                // For other errors besides wrong password, log them.
+                // Wrong password will be handled by the login form.
+                console.error('Error signing in special user:', signInError);
             }
         }
+    };
+
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        // If there's no user, attempt to sign in.
+        // This will now only run when the auth state is definitively 'no user'.
+        attemptSignInOrCreateUser();
       }
     });
 
